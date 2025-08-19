@@ -13,7 +13,7 @@ from menu import register_menu
 from group_manager import register_group_manager
 from sargarmi_plus import register_sargarmi_plus
 from security import register_security
-from help1 import register_help
+from help1 import register_help1
 
 # --- سرور keep_alive برای ریپلیت ---
 app = Flask('')
