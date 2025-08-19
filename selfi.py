@@ -13,7 +13,7 @@ from menu import register_menu
 from group_manager import register_group_manager
 from sargarmi_plus import register_sargarmi_plus
 from security import register_security
-from help import register_help
+from help1 import register_help
 
 # --- سرور keep_alive برای ریپلیت ---
 app = Flask('')
@@ -346,7 +346,7 @@ async def setup_client(session_name):
     register_group_manager(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sargarmi_plus(client, state, GLOBAL_GROUPS, save_state, send_status)  # سرگرمی پیشرفته
     register_security(client, state, GLOBAL_GROUPS, save_state, send_status)
-    register_help(client, state, GLOBAL_GROUPS, save_state, send_status)
+    register_help1(client, state, GLOBAL_GROUPS, save_state, send_status)
     return client
 
 
