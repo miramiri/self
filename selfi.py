@@ -8,6 +8,13 @@ from threading import Thread
 from autocatch import register_autocatch
 from selfi2 import register_extra_cmds   # دستورات جدا (لیست/آیدی/بلاک/تاریخ/تنظیم)
 
+from games import register_games
+from menu import register_menu
+from group_manager import register_group_manager
+from sargarmi_plus import register_sargarmi_plus
+from security import register_security
+from help import register_help
+
 # --- سرور keep_alive برای ریپلیت ---
 app = Flask('')
 
@@ -334,15 +341,23 @@ async def setup_client(session_name):
     # ---------- ماژول‌ها
     register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status)
-
+    register_games(client, state, GLOBAL_GROUPS, save_state, send_status)
+    register_menu(client, state, GLOBAL_GROUPS, save_state, send_status)
+    register_group_manager(client, state, GLOBAL_GROUPS, save_state, send_status)
+    register_sargarmi_plus(client, state, GLOBAL_GROUPS, save_state, send_status)  # سرگرمی پیشرفته
+    register_security(client, state, GLOBAL_GROUPS, save_state, send_status)
+    register_help(client, state, GLOBAL_GROUPS, save_state, send_status)
     return client
+
 
 async def main():
     clients = await asyncio.gather(*[setup_client(s) for s in SESSIONS])
     print(f"🚀 {len(clients)} کلاینت ران شد.")
     await asyncio.gather(*[c.run_until_disconnected() for c in clients])
 
+
 if __name__ == "__main__":
     keep_alive()   # 🔥 اضافه شد برای روشن موندن توی Replit
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
+
