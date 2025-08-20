@@ -49,7 +49,7 @@ SECTIONS = {
     "فروش": ["ثبت فروش", "متن تبلیغ", "قیمت", "تخفیف", "شروع فروش", "توقف فروش"]
 }
 
-def register_help(client, state, GLOBAL_GROUPS, save_state, send_status):
+def register_help1(client, state, GLOBAL_GROUPS, save_state, send_status):
     def is_owner(e):
         return e.sender_id == state["owner_id"]
 
