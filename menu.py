@@ -1,3 +1,4 @@
+
 from telethon import events
 
 def register_menu(client, state, GLOBAL_GROUPS, save_state, send_status):
@@ -25,6 +26,7 @@ def register_menu(client, state, GLOBAL_GROUPS, save_state, send_status):
  • .تنظیم [متن]
  • .ست 😀 💮 ⚡️
  • .ست حذف همه
+ • .کچ [ثانیه]
 
 🎮 ┇ بازی‌ها
  ━━━━━━━━━━━━━━

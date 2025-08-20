@@ -1,6 +1,7 @@
 # autocatch.py
 import re
 import time
+import asyncio
 from telethon import events
 
 ALLOWED_CMD_PATTERN = re.compile(r'^[\w\s./@#:\-+=!?(),]+$')
@@ -14,6 +15,25 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     - auto_groups: فقط اتوکچ
     - copy_groups: اتوکچ + کپی
     """
+
+    # --- دستور .کچ برای تنظیم تاخیر
+    @client.on(events.NewMessage(pattern=r'^\.کچ\s+([\d.]+)$'))
+    async def set_catch_delay(event):
+        try:
+            delay = float(event.pattern_match.group(1))
+            state["catch_delay"] = delay
+            save_state()
+            await event.reply(f"⏱️ تایم کچ روی {delay} ثانیه تنظیم شد")
+        except ValueError:
+            await event.reply("❌ مقدار وارد شده معتبر نیست")
+
+    # --- ذخیره آخرین پیام کاربر copy_plus_user
+    @client.on(events.NewMessage)
+    async def track_copy_plus(event):
+        target = state.get("copy_plus_user")
+        if target and event.sender_id == target:
+            state["last_copy_plus_msg"] = (event.chat_id, event.id)
+            save_state()
 
     # --- واکنش به پیام Character_Catcher_Bot و فوروارد به کالکت
     @client.on(events.NewMessage(from_users=["Character_Catcher_Bot"]))
@@ -42,6 +62,11 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                     await send_status()
 
                 try:
+                    # تاخیر قبل از فوروارد اگر تنظیم شده
+                    delay = state.get("catch_delay", 0)
+                    if delay > 0:
+                        await asyncio.sleep(delay)
+
                     await client.forward_messages("@collect_waifu_cheats_bot", event.message)
                 except Exception as ex:
                     print(f"⚠️ خطا در فوروارد به کالکت: {ex}")
@@ -97,11 +122,9 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                 # اگر کپی پلاس فعال بود → خودش دستور .کپی بزنه
                 if state.get("copy_plus_user"):
                     try:
-                        # ریپلای به پیام آخر کاربر هدف و ارسال .کپی
-                        target = state["copy_plus_user"]
-                        msgs = await client.get_messages(gid, from_user=target, limit=1)
-                        if msgs:
-                            await msgs[0].reply(".کپی")
+                        last = state.get("last_copy_plus_msg")
+                        if last and last[0] == gid:  # مطمئن بشیم همون گروهه
+                            await client.send_message(gid, ".کپی", reply_to=last[1])
                             acted = True
                     except Exception as ex:
                         print(f"⚠️ خطا در اجرای کپی پلاس: {ex}")
