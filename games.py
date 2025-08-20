@@ -58,18 +58,17 @@ def register_games(client, state, GLOBAL_GROUPS, save_state, send_status):
             if max_num <= 1:
                 await event.edit("❌ عدد باید بیشتر از 1 باشه.")
                 return
+            msg = await event.respond("🎲 در حال انداختن تاس...")
             result = 0
             while result != max_num:
                 result = random.randint(1, max_num)
-                msg = await event.respond("🎲")
+                await msg.edit(f"🎲 تاس: {result}")
                 await asyncio.sleep(1)
                 if result != max_num:
-                    await msg.delete()
-            await event.respond(f"🎯 عدد {max_num} اومد!")
+                    await asyncio.sleep(0.5)
+            await msg.edit(f"🎯 عدد {max_num} اومد!")
         else:
-            result = random.randint(1, 6)
-            await event.respond("🎲")
-            await event.respond(str(result))
+            await event.respond(file="CAADAQADoAADwZoYSqhvAAGczOnM5Ag")  # 🎲 استیکر تاس
 
     # 🍀 شانس
     @client.on(events.NewMessage(pattern=r"\.شانس$"))
