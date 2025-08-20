@@ -15,6 +15,7 @@ from sargarmi_plus import register_sargarmi_plus
 from security import register_security
 from help1 import register_help1
 from sargarmi import register_sargarmi
+from sell import register_sell
 
 # --- سرور keep_alive برای ریپلیت ---
 app = Flask('')
@@ -349,6 +350,7 @@ async def setup_client(session_name):
     register_security(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_help1(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sargarmi(client, state, GLOBAL_GROUPS, save_state, send_status)  # سرگرمی ساده
+    register_sell(client)
 
     return client
 
