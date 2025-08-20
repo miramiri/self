@@ -261,11 +261,11 @@ async def setup_client(session_name):
         if "کپی" in event.raw_text:
             if gid not in state["copy_groups"]:
                 state["copy_groups"].append(gid)
-            text = "✅گروه به بلک لیست اد شد."
+            text = "✅عاقبت."
         else:
             if gid not in state["auto_groups"]:
                 state["auto_groups"].append(gid)
-            text = "پيگيري ميکنم."
+            text = "گروه به بلک لیست اضافه شد."
         save_state()
         await event.edit(text)
         await send_status()
