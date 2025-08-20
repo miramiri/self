@@ -16,16 +16,18 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     - copy_groups: اتوکچ + کپی
     """
 
-    # --- دستور .کچ برای تنظیم تاخیر
+    # --- دستور .کچ برای تنظیم تاخیر اتوکچ
     @client.on(events.NewMessage(pattern=r'^\.کچ\s+([\d.]+)$'))
     async def set_catch_delay(event):
+        if event.sender_id != state.get("owner_id"):
+            return
         try:
             delay = float(event.pattern_match.group(1))
             state["catch_delay"] = delay
             save_state()
-            await event.reply(f"⏱️ تایم کچ روی {delay} ثانیه تنظیم شد")
+            await event.edit(f"⏱️ تاخیر اتوکچ روی {delay} ثانیه تنظیم شد")
         except ValueError:
-            await event.reply("❌ مقدار وارد شده معتبر نیست")
+            await event.edit("❌ عدد معتبر نیست")
 
     # --- ذخیره آخرین پیام کاربر copy_plus_user
     @client.on(events.NewMessage)
