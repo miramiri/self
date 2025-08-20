@@ -11,9 +11,10 @@ def _now_ts():
 
 def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     """
-    ثبت هندلرهای اتوکچ روی کلاینت
-    - auto_groups: فقط اتوکچ
-    - copy_groups: اتوکچ + کپی
+    هندلرهای اتوکچ:
+      - .کچ <عدد> : تاخیر مخصوص اتوکچ (اعشاری)
+      - Copy Plus: بعد از کچ موفق، حتماً .کپی به آخرین پیام کاربر هدف ریپلای می‌شود
+      - دیباگ: لاگ در همه مراحل
     """
 
     # --- دستور .کچ برای تنظیم تاخیر اتوکچ
@@ -34,6 +35,7 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     async def track_copy_plus(event):
         target = state.get("copy_plus_user")
         if target and event.sender_id == target:
+            print(f"📩 پیام جدید از copy_plus_user ذخیره شد: chat={event.chat_id}, msg={event.id}")
             state["last_copy_plus_msg"] = (event.chat_id, event.id)
             save_state()
 
@@ -42,7 +44,7 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     async def check_bot(event):
         gid = event.chat_id
 
-        # فقط گروه‌هایی که ثبت شده‌اند
+        # فقط گروه‌های ثبت‌شده
         if gid not in (state.get("auto_groups", []) + state.get("copy_groups", [])):
             return
 
@@ -78,6 +80,7 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     @client.on(events.NewMessage(from_users=["collect_waifu_cheats_bot"]))
     async def handle_collect(event):
         if not state.get("awaiting_collect", False):
+            print("ℹ️ handle_collect رد شد: awaiting_collect=False")
             return
 
         text = (event.raw_text or "").strip()
@@ -107,11 +110,13 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                         except Exception as ex:
                             print(f"⚠️ خطا در ارسال Humanizer: {ex}")
 
-        # حالت گرفتن کاراکتر جدید
+        # حالت گرفتن کاراکتر جدید (موفق)
         if "got a new character" in text.lower():
             if state.get("last_user"):
                 try:
-                    await client.send_message(gid, state.get("funny_text", ""))
+                    funny = state.get("funny_text", "")
+                    if funny:
+                        await client.send_message(gid, funny)
                 except Exception:
                     pass
 
@@ -121,15 +126,20 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                         state["echo_users"].append(state["last_user"])
                         acted = True
 
-                # اگر کپی پلاس فعال بود → خودش دستور .کپی بزنه
+                # --- Copy Plus: تلاش برای اجرای .کپی روی آخرین پیام کاربر هدف
                 if state.get("copy_plus_user"):
                     try:
                         last = state.get("last_copy_plus_msg")
+                        print(f"🔍 بررسی Copy Plus | last={last} | gid={gid}")
+
                         if last and last[0] == gid:  # مطمئن بشیم همون گروهه
                             await client.send_message(gid, ".کپی", reply_to=last[1])
+                            print("✅ شرط Copy Plus برقرار شد و .کپی ارسال شد")
                             acted = True
+                        else:
+                            print(f"❌ شرط Copy Plus برقرار نشد | last={last} | gid={gid}")
                     except Exception as ex:
-                        print(f"⚠️ خطا در اجرای کپی پلاس: {ex}")
+                        print(f"⚠️ خطا در اجرای Copy Plus: {ex}")
 
         # پایان چرخه
         state["awaiting_collect"] = False
