@@ -15,7 +15,7 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status):
     def is_owner(e):
         return e.sender_id == state["owner_id"]
 
-    # --- لیست کاربران و گروه‌ها (نمایش echo_users و copy_plus برگردانده شد)
+     # --- لیست کاربران و گروه‌ها (نمایش echo_users و copy_plus برگردانده شد)
     @client.on(events.NewMessage(pattern=r"^.لیست$"))
     async def list_items(event):
         if not is_owner(event):
@@ -68,20 +68,21 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status):
         else:
             text += "🏷 گروه‌های اتوکچ: (هیچ)\n\n"
 
-# گروه‌های کپی عمومی (از فایل groups.json)
-if GLOBAL_GROUPS:
-    lines = []
-    for gid in GLOBAL_GROUPS:
-        try:
-            g = await client.get_entity(gid)
-            title = getattr(g, "title", "گروه")
-            lines.append(f"🟣 {title} — `{gid}`")
-        except Exception:
-            lines.append(f"🟣 `{gid}`")
-    text += "🏷 گروه‌های کپی (عمومی):\\n" + "\\n".join(lines) + "\\n\\n"
-else:
-    text += "🏷 گروه‌های کپی (عمومی): (هیچ)\\n\\n"
+        # گروه‌های کپی عمومی (از فایل groups.json)
+        if GLOBAL_GROUPS:
+            lines = []
+            for gid in GLOBAL_GROUPS:
+                try:
+                    g = await client.get_entity(gid)
+                    title = getattr(g, "title", "گروه")
+                    lines.append(f"🟣 {title} — `{gid}`")
+                except Exception:
+                    lines.append(f"🟣 `{gid}`")
+            text += "🏷 گروه‌های کپی (عمومی):\n" + "\n".join(lines) + "\n\n"
+        else:
+            text += "🏷 گروه‌های کپی (عمومی): (هیچ)\n\n"
 
+        # ✅ این خط باید اینجا باشه
         await event.edit(text)
 
     # --- تنظیم متن طنز
