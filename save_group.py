@@ -27,7 +27,7 @@ def register_save_group(client, state, groups, save_state, send_status):
     async def register_group(event):
         if not is_owner(event): return
         if not event.is_group:
-            await event.edit("کص زن حقیقت کنم تو گروه فقط کار می‌کنه🦦🤦🏻‍♂️.")
+            await event.edit("کص زن جقیت کنم فقط تو گروه کار می‌کنه🤦🏻‍♂️.")
             return
         
         gid = event.chat_id
@@ -76,4 +76,4 @@ def register_save_group(client, state, groups, save_state, send_status):
             await event.edit("گروه از حالت سکوت در اومد 🦦.")
             await send_status()
         else:
-            await event.edit("ℹ️ این گروه قبلاً ثبت نشده بود.")
+            await event.edit("به من چه این گروه ساخته🤨.")
