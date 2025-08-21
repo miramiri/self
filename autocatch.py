@@ -11,8 +11,8 @@ def _now_ts():
 def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     """
     ثبت هندلرهای اتوکچ روی کلاینت
-    - auto_groups: فقط اتوکچ
-    - copy_groups: اتوکچ + کپی
+    - auto_groups: فقط اتوکچ (اختصاصی هر اکانت)
+    - GLOBAL_GROUPS: گروه‌های کپی عمومی
     """
 
     # مقدار پیش‌فرض سرعت کچ
@@ -38,7 +38,7 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
         gid = event.chat_id
 
         # فقط گروه‌هایی که ثبت شده‌اند
-        if gid not in (state.get("auto_groups", []) + state.get("copy_groups", [])):
+        if gid not in (state.get("auto_groups", []) + GLOBAL_GROUPS):
             return
 
         text = event.raw_text or ""
@@ -108,8 +108,8 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                 except Exception:
                     pass
 
-                # اگر گروه در copy_groups بود → دوباره کپی فعال بشه
-                if gid in state.get("copy_groups", []):
+                # اگر گروه در GLOBAL_GROUPS بود → دوباره کپی فعال بشه
+                if gid in GLOBAL_GROUPS:
                     prev_list = state.get("saved_echo_users", [])
                     for u in prev_list:
                         if u not in state["echo_users"]:

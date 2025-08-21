@@ -69,8 +69,7 @@ async def setup_client(session_name):
         "funny_text": "نیما فشاری 😂",
         "status_msg_id": None,
         "auto_groups": [],     
-        "copy_groups": [],
-        "copy_plus_user": None   # --- کاربر انتخابی برای کپی پلاس
+                "copy_plus_user": None   # --- کاربر انتخابی برای کپی پلاس
     }
 
     if os.path.exists(DATA_FILE):
@@ -109,9 +108,8 @@ async def setup_client(session_name):
             f"   ⏳ تاخیر: {state['delay']} ثانیه\n"
             f"   🔄 کاربران کپی: {len(state['echo_users'])}\n"
             f"   ⛔ ایموجی قطع‌کننده: {', '.join(state['stop_emoji']) if state['stop_emoji'] else 'هیچ'}\n"
-            f"   📌 گروه‌های ثبت‌شده: {len(GLOBAL_GROUPS)}\n"
-            f"   🟢 گروه‌های اتوکچ: {len(state['auto_groups'])}\n"
-            f"   🟣 گروه‌های کپی+اتوکچ: {len(state['copy_groups'])}\n"
+            f"   🟢 گروه‌های اتوکچ (این اکانت): {len(state['auto_groups'])}\n"
+            f"   🟣 گروه‌های کپی (عمومی): {len(GLOBAL_GROUPS)}\n"
             f"\n"
             f"📖 دستورات موجود:\n"
             f"   👤 مدیریت کاربران:\n"
@@ -240,8 +238,7 @@ async def setup_client(session_name):
             "funny_text": "مگه نیما فشاری 😂",
             "status_msg_id": state.get("status_msg_id"),
             "auto_groups": [],
-            "copy_groups": [],
-            "copy_plus_user": None
+                        "copy_plus_user": None
         })
         save_state()
         await event.edit("♻️ فایل دیتا ریست شد.")
@@ -328,7 +325,7 @@ async def setup_client(session_name):
     async def echo(event):
         if not state["enabled"]:
             return
-        if event.chat_id not in state["copy_groups"]:
+        if event.chat_id not in GLOBAL_GROUPS:
             return
         if event.sender_id in state["echo_users"]:
             await asyncio.sleep(state["delay"])
