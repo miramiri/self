@@ -10,13 +10,12 @@ from selfi2 import register_extra_cmds   # دستورات جدا (لیست/آی�
 
 from games import register_games
 from menu import register_menu
-from group_manager import register_group_manager
 from sargarmi_plus import register_sargarmi_plus
 from security import register_security
 from help1 import register_help1
 from sargarmi import register_sargarmi
 from sell import register_sell
-from save_group import register_group_manager
+from save_group import register_save_group
 
 # --- سرور keep_alive برای ریپلیت ---
 app = Flask('')
@@ -302,15 +301,12 @@ async def setup_client(session_name):
     register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_games(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_menu(client, state, GLOBAL_GROUPS, save_state, send_status)
-    register_group_manager(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sargarmi_plus(client, state, GLOBAL_GROUPS, save_state, send_status)  # سرگرمی پیشرفته
     register_security(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_help1(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sargarmi(client, state, GLOBAL_GROUPS, save_state, send_status)  # سرگرمی ساده
     register_sell(client)
-    def register_group_manager(client, state, groups, save_state, send_status):
-    # اینجا می‌تونی از save_state و send_status هم استفاده کنی
-    ...
+    register_save_group(client, state, GLOBAL_GROUPS, save_state, send_status)
 
     return client
 
