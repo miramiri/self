@@ -18,7 +18,7 @@ def save_state(session_name, state):
         json.dump(state, f, ensure_ascii=False, indent=2)
 
 # ---------------- ثبت / حذف ----------------
-def register_group_manager(client, session_name, all_sessions):
+register_group_manager(client, state, GLOBAL_GROUPS, save_state, send_status)
     state = load_state(session_name)
 
     def is_owner(e):
