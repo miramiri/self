@@ -15,9 +15,10 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     - GLOBAL_GROUPS: گروه‌های کپی عمومی
     """
 
-    # مقدار پیش‌فرض سرعت کچ
     if "catch_delay" not in state:
         state["catch_delay"] = 1.0
+    if "pending_catches" not in state:
+        state["pending_catches"] = []
 
     # --- تغییر سرعت کچ با '.کچ 1.5' و ...
     @client.on(events.NewMessage(pattern=r"\.کچ (\d+(?:\.\d+)?)$"))
@@ -37,26 +38,20 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     async def check_bot(event):
         gid = event.chat_id
 
-        # فقط گروه‌هایی که ثبت شده‌اند
         if gid not in (state.get("auto_groups", []) + GLOBAL_GROUPS):
             return
 
         text = event.raw_text or ""
-        emojis = state.get("stop_emoji") or []
-
-        for e in emojis:
+        for e in (state.get("stop_emoji") or []):
             if text.startswith(e):
-                # اتوکچ فعال
-                if not state.get("awaiting_collect", False):
-                    prev_list = list(state.get("echo_users", []))
-                    state["saved_echo_users"] = prev_list
-                    state["last_user"] = prev_list[-1] if prev_list else None
-                    state["last_group"] = gid
-                    state["echo_users"] = []           # توقف موقت کپی
-                    state["awaiting_collect"] = True   # منتظر پاسخ کالکت
-                    state["last_collect_trigger"] = _now_ts()
-                    save_state()
-                    await send_status()
+                state["pending_catches"].append({
+                    "gid": gid,
+                    "users": list(state.get("echo_users", [])),
+                    "time": _now_ts()
+                })
+                state["echo_users"] = []
+                save_state()
+                await send_status()
 
                 try:
                     await asyncio.sleep(state.get("catch_delay", 1.0))
@@ -68,16 +63,13 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     # --- پردازش پاسخ از @collect_waifu_cheats_bot
     @client.on(events.NewMessage(from_users=["collect_waifu_cheats_bot"]))
     async def handle_collect(event):
-        if not state.get("awaiting_collect", False):
+        if not state["pending_catches"]:
             return
 
+        req = state["pending_catches"].pop(0)
+        gid = req["gid"]
+        saved_users = req["users"]
         text = (event.raw_text or "").strip()
-        gid = state.get("last_group")
-        if not gid:
-            state["awaiting_collect"] = False
-            save_state()
-            return
-
         acted = False
 
         # حالت Humanizer
@@ -86,46 +78,32 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
             if m:
                 cmd = m.group(1).strip().strip('`"\'')
                 if 0 < len(cmd) <= 200 and ALLOWED_CMD_PATTERN.match(cmd):
-                    last_cmd = state.get("last_humanizer_cmd")
-                    last_ts = state.get("last_humanizer_ts", 0)
-                    now = _now_ts()
-                    if cmd != last_cmd or (now - last_ts) > 5:
-                        try:
-                            await asyncio.sleep(state.get("catch_delay", 1.0))
-                            await client.send_message(gid, cmd)
-                            state["last_humanizer_cmd"] = cmd
-                            state["last_humanizer_ts"] = now
-                            acted = True
-                        except Exception as ex:
-                            print(f"⚠️ خطا در ارسال Humanizer: {ex}")
+                    try:
+                        await asyncio.sleep(state.get("catch_delay", 1.0))
+                        await client.send_message(gid, cmd)
+                        acted = True
+                    except Exception as ex:
+                        print(f"⚠️ خطا در ارسال Humanizer: {ex}")
 
         # حالت گرفتن کاراکتر جدید
         if "got a new character" in text.lower():
-            if state.get("last_user"):
-                try:
-                    await asyncio.sleep(state.get("catch_delay", 1.0))
-                    await client.send_message(gid, state.get("funny_text", ""))
-                except Exception:
-                    pass
+            try:
+                await asyncio.sleep(state.get("catch_delay", 1.0))
+                await client.send_message(gid, state.get("funny_text", ""))
+            except Exception:
+                pass
 
-                # اگر گروه در GLOBAL_GROUPS بود → دوباره کپی فعال بشه
-                if gid in GLOBAL_GROUPS:
-                    prev_list = state.get("saved_echo_users", [])
-                    for u in prev_list:
-                        if u not in state["echo_users"]:
-                            state["echo_users"].append(u)
-                            acted = True
+            for u in saved_users:
+                if u not in state["echo_users"]:
+                    state["echo_users"].append(u)
+                    acted = True
 
-                # اگر کپی پلاس فعال بود → مستقیم یوزر دوباره اضافه بشه
-                if state.get("copy_plus_user"):
-                    target = state["copy_plus_user"]
-                    if target not in state["echo_users"]:
-                        state["echo_users"].append(target)
-                        acted = True
+            if state.get("copy_plus_user"):
+                target = state["copy_plus_user"]
+                if target not in state["echo_users"]:
+                    state["echo_users"].append(target)
+                    acted = True
 
-        # پایان چرخه
-        state["awaiting_collect"] = False
-        state["saved_echo_users"] = []
         save_state()
         if acted:
             await send_status()
