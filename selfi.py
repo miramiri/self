@@ -16,7 +16,7 @@ from security import register_security
 from help1 import register_help1
 from sargarmi import register_sargarmi
 from sell import register_sell
-from save_group import register_save_groups
+from save_group import register_group_manager
 
 # --- سرور keep_alive برای ریپلیت ---
 app = Flask('')
@@ -245,75 +245,6 @@ async def setup_client(session_name):
         await event.edit("♻️ فایل دیتا ریست شد.")
         await send_status()
 
-# ---------- ثبت گروه فقط اتوکچ
-    @client.on(events.NewMessage(pattern=r"^\.ثبت$"))
-    async def register_autocatch_cmd(event):
-        if not is_owner(event): 
-            return
-        if not event.is_group:
-            await event.edit("❌ فقط در گروه کار می‌کند.")
-            return
-
-        gid = event.chat_id
-        if gid not in GLOBAL_GROUPS:
-            GLOBAL_GROUPS.append(gid)
-            save_groups()
-
-        if gid not in state["auto_groups"]:
-            state["auto_groups"].append(gid)
-
-        save_state()
-        await event.edit("گروه در حالت سکوت است😴.")
-        await send_status()
-
-    # ---------- ثبت گروه با اتوکچ + کپی
-    @client.on(events.NewMessage(pattern=r"^\.ثبت کپی$"))
-    async def register_copy_cmd(event):
-        if not is_owner(event): 
-            return
-        if not event.is_group:
-            await event.edit("میگم کصخلی میگی نه😂.")
-            return
-
-        gid = event.chat_id
-        if gid not in GLOBAL_GROUPS:
-            GLOBAL_GROUPS.append(gid)
-            save_groups()
-
-        if gid not in state["auto_groups"]:
-            state["auto_groups"].append(gid)
-        if "copy_groups" not in state:
-            state["copy_groups"] = []
-        if gid not in state["copy_groups"]:
-            state["copy_groups"].append(gid)
-
-        save_state()
-        await event.edit("ی جوک بگم میو جنده نیست😂.")
-        await send_status()
-
-    # ---------- حذف گروه
-    @client.on(events.NewMessage(pattern=r"^\.حذف$"))
-    async def unregister_group_cmd(event):
-        if not is_owner(event): 
-            return
-        if not event.is_group:
-            await event.edit("کصخل پیوی نزن🦦")
-            return
-
-        gid = event.chat_id
-        if gid in GLOBAL_GROUPS:
-            GLOBAL_GROUPS.remove(gid)
-            save_groups()
-
-        if gid in state.get("auto_groups", []):
-            state["auto_groups"].remove(gid)
-        if gid in state.get("copy_groups", []):
-            state["copy_groups"].remove(gid)
-
-        save_state()
-        await event.edit("گروه از حالت سکوت در آمد🤦🏻‍♂️")
-        await send_status()
-
     # ---------- دستور .ست
     @client.on(events.NewMessage(pattern=r".ست حذف همه$"))
     async def clear_stop_emoji(event):
@@ -377,7 +308,7 @@ async def setup_client(session_name):
     register_help1(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sargarmi(client, state, GLOBAL_GROUPS, save_state, send_status)  # سرگرمی ساده
     register_sell(client)
-    register_save_groups(client, state, session_name, GLOBAL_GROUPS, save_state, send_status)
+    register_group_manager(client, session_name, all_sessions)
 
     return client
 

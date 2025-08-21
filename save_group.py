@@ -45,7 +45,7 @@ def register_group_manager(client, session_name, all_sessions):
     async def register_copy_group(event):
         if not is_owner(event): return
         if not event.is_group:
-            await event.edit("❌ فقط در گروه کار می‌کند.")
+            await event.edit("میگم کصخلی میگی نه😂")
             return
         
         gid = event.chat_id
@@ -57,9 +57,9 @@ def register_group_manager(client, session_name, all_sessions):
                 updated = True
 
         if updated:
-            await event.edit("✅ گروه برای همه اکانت‌ها در کپی ثبت شد.")
+            await event.edit("بریم رو کار حملهههههه")
         else:
-            await event.edit("ℹ️ این گروه قبلاً برای همه ثبت شده بود.")
+            await event.edit("")
 
     # --- حذف گروه ---
     @client.on(events.NewMessage(pattern=r"^\.حذف$"))
