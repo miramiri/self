@@ -245,72 +245,73 @@ async def setup_client(session_name):
         await send_status()
 
 # ---------- ثبت گروه فقط اتوکچ
-    @client.on(events.NewMessage(pattern=r"^\.ثبت$"))
-    async def register_autocatch(event):
-        if not is_owner(event): return
-        if not event.is_group:
-            await event.edit("❌ فقط در گروه کار می‌کند.")
-            return
-        gid = event.chat_id
+@client.on(events.NewMessage(pattern=r"^\.ثبت$"))
+async def register_autocatch_cmd(event):
+    if not is_owner(event): 
+        return
+    if not event.is_group:
+        await event.edit("❌ فقط در گروه کار می‌کند.")
+        return
 
-        if gid not in GLOBAL_GROUPS:
-            GLOBAL_GROUPS.append(gid)
-            save_groups()
+    gid = event.chat_id
+    if gid not in GLOBAL_GROUPS:
+        GLOBAL_GROUPS.append(gid)
+        save_groups()
 
-        if gid not in state["auto_groups"]:
-            state["auto_groups"].append(gid)
+    if gid not in state["auto_groups"]:
+        state["auto_groups"].append(gid)
 
-        save_state()
-        await event.edit( "گروه در حالت سکوت است😴")
-        await send_status()
-
-
-    # ---------- ثبت گروه اتوکچ + کپی
-    @client.on(events.NewMessage(pattern=r"^\.ثبت کپی$"))
-    async def register_autocatch_copy(event):
-        if not is_owner(event): return
-        if not event.is_group:
-            await event.edit("❌ فقط در گروه کار می‌کند.")
-            return
-        gid = event.chat_id
-
-        if gid not in GLOBAL_GROUPS:
-            GLOBAL_GROUPS.append(gid)
-            save_groups()
-
-        if gid not in state["auto_groups"]:
-            state["auto_groups"].append(gid)
-
-        if gid not in state["copy_groups"]:
-            state["copy_groups"].append(gid)
-
-        save_state()
-        await event.edit("راشد فشاری.")
-        await send_status()
+    save_state()
+    await event.edit("✅ گروه برای اتوکچ ثبت شد.")
+    await send_status()
 
 
-    # ---------- حذف گروه
-    @client.on(events.NewMessage(pattern=r"^\.حذف$"))
-    async def unregister_group(event):
-        if not is_owner(event): return
-        if not event.is_group:
-            await event.edit("❌ فقط در گروه کار می‌کند.")
-            return
-        gid = event.chat_id
+# ---------- ثبت گروه با اتوکچ + کپی
+@client.on(events.NewMessage(pattern=r"^\.ثبت کپی$"))
+async def register_copy_cmd(event):
+    if not is_owner(event): 
+        return
+    if not event.is_group:
+        await event.edit("❌ فقط در گروه کار می‌کند.")
+        return
 
-        if gid in GLOBAL_GROUPS:
-            GLOBAL_GROUPS.remove(gid)
-            save_groups()
+    gid = event.chat_id
+    if gid not in GLOBAL_GROUPS:
+        GLOBAL_GROUPS.append(gid)
+        save_groups()
 
-        if gid in state["auto_groups"]:
-            state["auto_groups"].remove(gid)
+    if gid not in state["auto_groups"]:
+        state["auto_groups"].append(gid)
+    if gid not in state["copy_groups"]:
+        state["copy_groups"].append(gid)
 
-        if gid in state["copy_groups"]:
-            state["copy_groups"].remove(gid)
+    save_state()
+    await event.edit("✅ گروه برای اتوکچ + کپی ثبت شد.")
+    await send_status()
 
-        save_state()
-        await event.edit("گروه از حالت سکوت در آمد🤦🏻‍♂️")
-        await send_status()
+
+# ---------- حذف گروه
+@client.on(events.NewMessage(pattern=r"^\.حذف$"))
+async def unregister_group_cmd(event):
+    if not is_owner(event): 
+        return
+    if not event.is_group:
+        await event.edit("❌ فقط در گروه کار می‌کند.")
+        return
+
+    gid = event.chat_id
+    if gid in GLOBAL_GROUPS:
+        GLOBAL_GROUPS.remove(gid)
+        save_groups()
+
+    if gid in state["auto_groups"]:
+        state["auto_groups"].remove(gid)
+    if gid in state["copy_groups"]:
+        state["copy_groups"].remove(gid)
+
+    save_state()
+    await event.edit("⛔ گروه از لیست‌ها حذف شد.")
+    await send_status()
 
     # ---------- دستور .ست
     @client.on(events.NewMessage(pattern=r".ست حذف همه$"))
