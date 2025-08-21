@@ -68,7 +68,7 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status):
         else:
             text += "🏷 گروه‌های اتوکچ: (هیچ)\n\n"
 
-        # گروه‌های کپی عمومی (از فایل groups.json)
+# گروه‌های کپی عمومی (از فایل groups.json)
 if GLOBAL_GROUPS:
     lines = []
     for gid in GLOBAL_GROUPS:
@@ -78,11 +78,9 @@ if GLOBAL_GROUPS:
             lines.append(f"🟣 {title} — `{gid}`")
         except Exception:
             lines.append(f"🟣 `{gid}`")
-    text += "🏷 گروه‌های کپی (عمومی):
-" + "
-".join(lines)
+    text += "🏷 گروه‌های کپی (عمومی):\\n" + "\\n".join(lines) + "\\n\\n"
 else:
-    text += "🏷 گروه‌های کپی (عمومی): (هیچ)\n\n"
+    text += "🏷 گروه‌های کپی (عمومی): (هیچ)\\n\\n"
 
         await event.edit(text)
 
