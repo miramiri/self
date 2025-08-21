@@ -262,7 +262,7 @@ async def setup_client(session_name):
             state["auto_groups"].append(gid)
 
         save_state()
-        await event.edit("✅ گروه برای اتوکچ ثبت شد.")
+        await event.edit("گروه در حالت سکوت است😴.")
         await send_status()
 
     # ---------- ثبت گروه با اتوکچ + کپی
@@ -271,7 +271,7 @@ async def setup_client(session_name):
         if not is_owner(event): 
             return
         if not event.is_group:
-            await event.edit("❌ فقط در گروه کار می‌کند.")
+            await event.edit("کی دست کرد تو شورت معلم💩.")
             return
 
         gid = event.chat_id
@@ -287,7 +287,7 @@ async def setup_client(session_name):
             state["copy_groups"].append(gid)
 
         save_state()
-        await event.edit("✅ گروه برای اتوکچ + کپی ثبت شد.")
+        await event.edit("میگم کصخلی میگی نه🤦🏻‍♂️.")
         await send_status()
 
     # ---------- حذف گروه
@@ -296,7 +296,7 @@ async def setup_client(session_name):
         if not is_owner(event): 
             return
         if not event.is_group:
-            await event.edit("❌ فقط در گروه کار می‌کند.")
+            await event.edit("کصخل پیپی نزن گروه🦦.")
             return
 
         gid = event.chat_id
@@ -310,7 +310,7 @@ async def setup_client(session_name):
             state["copy_groups"].remove(gid)
 
         save_state()
-        await event.edit("⛔ گروه از لیسحذف شد.")
+        await event.edit("گروه از حالت سکوت در آمد🤦🏻‍♂️")
         await send_status()
 
     # ---------- دستور .ست
