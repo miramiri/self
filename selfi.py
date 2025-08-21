@@ -308,7 +308,9 @@ async def setup_client(session_name):
     register_help1(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sargarmi(client, state, GLOBAL_GROUPS, save_state, send_status)  # سرگرمی ساده
     register_sell(client)
-    register_group_manager(client, session_name, all_sessions)
+    def register_group_manager(client, state, groups, save_state, send_status):
+    # اینجا می‌تونی از save_state و send_status هم استفاده کنی
+    ...
 
     return client
 
