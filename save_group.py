@@ -19,7 +19,6 @@ def save_state(session_name, state):
 
 # ---------------- ثبت / حذف ----------------
 def register_save_group(client, state, groups, save_state, send_status):
-    ...
     def is_owner(e):
         return e.sender_id == state.get("owner_id")
 
