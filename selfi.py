@@ -271,7 +271,7 @@ async def setup_client(session_name):
         if not is_owner(event): 
             return
         if not event.is_group:
-            await event.edit("کی دست کرد تو شورت معلم💩.")
+            await event.edit("میگم کصخلی میگی نه😂.")
             return
 
         gid = event.chat_id
@@ -287,7 +287,7 @@ async def setup_client(session_name):
             state["copy_groups"].append(gid)
 
         save_state()
-        await event.edit("میگم کصخلی میگی نه🤦🏻‍♂️.")
+        await event.edit("ی جوک بگم میو جنده نیست😂.")
         await send_status()
 
     # ---------- حذف گروه
@@ -296,7 +296,7 @@ async def setup_client(session_name):
         if not is_owner(event): 
             return
         if not event.is_group:
-            await event.edit("کصخل پیپی نزن گروه🦦.")
+            await event.edit("کصخل پیوی نزن🦦")
             return
 
         gid = event.chat_id
