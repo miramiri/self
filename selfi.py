@@ -244,45 +244,72 @@ async def setup_client(session_name):
         await event.edit("♻️ فایل دیتا ریست شد.")
         await send_status()
 
-    # ---------- ثبت / حذف گروه 
-    @client.on(events.NewMessage(pattern=r".ثبت(?:\s+کپی)?$"))
-    async def register_group(event):
+# ---------- ثبت گروه فقط اتوکچ
+    @client.on(events.NewMessage(pattern=r"^\.ثبت$"))
+    async def register_autocatch(event):
         if not is_owner(event): return
         if not event.is_group:
             await event.edit("❌ فقط در گروه کار می‌کند.")
             return
         gid = event.chat_id
+
         if gid not in GLOBAL_GROUPS:
             GLOBAL_GROUPS.append(gid)
             save_groups()
-        if "کپی" in event.raw_text:
-            if gid not in state["copy_groups"]:
-                state["copy_groups"].append(gid)
-            text = "✅عاقبت."
-        else:
-            if gid not in state["auto_groups"]:
-                state["auto_groups"].append(gid)
-            text = "گروه به بلک لیست اضافه شد."
+
+        if gid not in state["auto_groups"]:
+            state["auto_groups"].append(gid)
+
         save_state()
-        await event.edit(text)
+        await event.edit( "گروه در حالت سکوت است😴")
         await send_status()
 
-    @client.on(events.NewMessage(pattern=r".حذف$"))
+
+    # ---------- ثبت گروه اتوکچ + کپی
+    @client.on(events.NewMessage(pattern=r"^\.ثبت کپی$"))
+    async def register_autocatch_copy(event):
+        if not is_owner(event): return
+        if not event.is_group:
+            await event.edit("❌ فقط در گروه کار می‌کند.")
+            return
+        gid = event.chat_id
+
+        if gid not in GLOBAL_GROUPS:
+            GLOBAL_GROUPS.append(gid)
+            save_groups()
+
+        if gid not in state["auto_groups"]:
+            state["auto_groups"].append(gid)
+
+        if gid not in state["copy_groups"]:
+            state["copy_groups"].append(gid)
+
+        save_state()
+        await event.edit("راشد فشاری.")
+        await send_status()
+
+
+    # ---------- حذف گروه
+    @client.on(events.NewMessage(pattern=r"^\.حذف$"))
     async def unregister_group(event):
         if not is_owner(event): return
         if not event.is_group:
             await event.edit("❌ فقط در گروه کار می‌کند.")
             return
         gid = event.chat_id
+
         if gid in GLOBAL_GROUPS:
             GLOBAL_GROUPS.remove(gid)
             save_groups()
+
         if gid in state["auto_groups"]:
             state["auto_groups"].remove(gid)
+
         if gid in state["copy_groups"]:
             state["copy_groups"].remove(gid)
+
         save_state()
-        await event.edit("⛔ گروه حذف شد.")
+        await event.edit("گروه از حالت سکوت در آمد🤦🏻‍♂️")
         await send_status()
 
     # ---------- دستور .ست
