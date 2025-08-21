@@ -18,9 +18,7 @@ def save_state(session_name, state):
         json.dump(state, f, ensure_ascii=False, indent=2)
 
 # ---------------- ثبت / حذف ----------------
-register_group_manager(client, state, GLOBAL_GROUPS, save_state, send_status)
-    state = load_state(session_name)
-
+def register_group_manager(client, state, groups, save_state, send_status):
     def is_owner(e):
         return e.sender_id == state.get("owner_id")
 
@@ -35,7 +33,7 @@ register_group_manager(client, state, GLOBAL_GROUPS, save_state, send_status)
         gid = event.chat_id
         if gid not in state["auto_groups"]:
             state["auto_groups"].append(gid)
-            save_state(session_name, state)
+            save_state()
             await event.edit("✅ گروه فقط برای این اکانت ثبت شد.")
         else:
             await event.edit("ℹ️ این گروه قبلاً ثبت شده بود.")
@@ -45,21 +43,17 @@ register_group_manager(client, state, GLOBAL_GROUPS, save_state, send_status)
     async def register_copy_group(event):
         if not is_owner(event): return
         if not event.is_group:
-            await event.edit("میگم کصخلی میگی نه😂")
+            await event.edit("❌ فقط در گروه کار می‌کند.")
             return
         
         gid = event.chat_id
-        updated = False
-        for sname, cstate in all_sessions.items():
-            if gid not in cstate["copy_groups"]:
-                cstate["copy_groups"].append(gid)
-                save_state(sname, cstate)
-                updated = True
-
-        if updated:
-            await event.edit("بریم رو کار حملهههههه")
+        if gid not in groups:
+            groups.append(gid)
+            save_state()
+            await event.edit("✅ گروه برای همه اکانت‌ها ثبت شد.")
+            await send_status()
         else:
-            await event.edit("")
+            await event.edit("ℹ️ این گروه قبلاً برای همه ثبت شده بود.")
 
     # --- حذف گروه ---
     @client.on(events.NewMessage(pattern=r"^\.حذف$"))
@@ -74,11 +68,12 @@ register_group_manager(client, state, GLOBAL_GROUPS, save_state, send_status)
         if gid in state["auto_groups"]:
             state["auto_groups"].remove(gid)
             removed = True
-        if gid in state["copy_groups"]:
-            state["copy_groups"].remove(gid)
+        if gid in groups:
+            groups.remove(gid)
             removed = True
         if removed:
-            save_state(session_name, state)
+            save_state()
             await event.edit("⛔ گروه حذف شد.")
+            await send_status()
         else:
             await event.edit("ℹ️ این گروه قبلاً ثبت نشده بود.")
