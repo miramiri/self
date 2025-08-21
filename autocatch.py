@@ -15,6 +15,23 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     - copy_groups: اتوکچ + کپی
     """
 
+    # مقدار پیش‌فرض سرعت کچ
+    if "catch_delay" not in state:
+        state["catch_delay"] = 1.0
+
+    # --- تغییر سرعت کچ با '.کچ 1.5' و ...
+    @client.on(events.NewMessage(pattern=r"\.کچ (\d+(?:\.\d+)?)$"))
+    async def set_catch_delay(event):
+        if event.sender_id != state.get("owner_id"): return
+        try:
+            delay = float(event.pattern_match.group(1))
+        except Exception:
+            return
+        state["catch_delay"] = delay
+        save_state()
+        await event.edit(f"⚡ سرعت کچ روی {delay} ثانیه تنظیم شد.")
+        await send_status()
+
     # --- واکنش به پیام Character_Catcher_Bot و فوروارد به کالکت
     @client.on(events.NewMessage(from_users=["Character_Catcher_Bot"]))
     async def check_bot(event):
