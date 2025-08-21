@@ -3,10 +3,15 @@ import openai
 from telethon import events
 
 # توکن OpenAI اینجا وارد کن
-openai.api_key = "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"
+openai.api_key = "sk-...."  # کلیدتو اینجا بذار
 
+# گروه‌های فروش (آیدی عددی یا یوزرنیم)
 selling_groups = set()
+
+# وضعیت فعال بودن تبلیغات
 selling_active = True
+
+# پیام تبلیغ
 ad_message = {
     "text": "🔥 فروش کاراکتر ویژه!",
     "price": "100 اکس",
@@ -19,7 +24,7 @@ def build_ad_text():
 
 
 def register_sell(client):
-    # ثبت گروه (هیچ پیامی نشون نمی‌ده)
+    # ثبت گروه فروش
     @client.on(events.NewMessage(pattern=r"\.ثبت فروش$"))
     async def register_group(event):
         selling_groups.add(event.chat_id)
@@ -39,25 +44,28 @@ def register_sell(client):
     async def set_discount(event):
         ad_message["discount"] = event.pattern_match.group(1)
 
-    # شروع فروش (تبلیغ هر ۵ دقیقه، بدون پیام اضافی)
+    # شروع فروش (تبلیغ هر ۵ دقیقه)
     @client.on(events.NewMessage(pattern=r"\.شروع فروش$"))
     async def start_selling(event):
         global selling_active
         selling_active = True
         while selling_active:
             for chat_id in selling_groups:
-                await client.send_message(chat_id, build_ad_text())
-                await asyncio.sleep(2)
+                try:
+                    await client.send_message(chat_id, build_ad_text())
+                    await asyncio.sleep(2)
+                except Exception as e:
+                    print(f"خطا در ارسال تبلیغ: {e}")
             await asyncio.sleep(300)  # هر ۵ دقیقه
 
-    # توقف دستی (هیچ پیامی نشون نمی‌ده)
+    # توقف فروش
     @client.on(events.NewMessage(pattern=r"\.توقف فروش$"))
     async def stop_selling(event):
         global selling_active
         selling_active = False
 
-    # پاسخ‌گویی هوش مصنوعی
-    @client.on(events.NewMessage(chats=lambda x: x in selling_groups))
+    # پاسخ‌گویی هوش مصنوعی در گروه‌های فروش
+    @client.on(events.NewMessage(chats=list(selling_groups)))
     async def auto_ai_reply(event):
         global selling_active
         if not selling_active:
@@ -79,5 +87,5 @@ def register_sell(client):
             )
             answer = response.choices[0].message["content"]
             await event.reply(answer)
-        except:
-            pass  # اگه خطا داد هیچی نگه
+        except Exception as e:
+            print(f"❌ خطا در پاسخ AI: {e}")
