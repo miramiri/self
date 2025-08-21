@@ -76,4 +76,4 @@ def register_save_group(client, state, groups, save_state, send_status):
             await event.edit("گروه از حالت سکوت در اومد 🦦.")
             await send_status()
         else:
-            await event.edit("به من چه این گروه ساخته🤨.")
+            await event.edit("این گروه اصلا سکوت نیست🤨.")
