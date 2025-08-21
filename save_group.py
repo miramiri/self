@@ -27,40 +27,40 @@ def register_save_group(client, state, groups, save_state, send_status):
     async def register_group(event):
         if not is_owner(event): return
         if not event.is_group:
-            await event.edit("❌ فقط در گروه کار می‌کند.")
+            await event.edit("کص زن حقیقت کنم تو گروه فقط کار می‌کنه🦦🤦🏻‍♂️.")
             return
         
         gid = event.chat_id
         if gid not in state["auto_groups"]:
             state["auto_groups"].append(gid)
             save_state()
-            await event.edit("✅ گروه فقط برای این اکانت ثبت شد.")
+            await event.edit("گروه در حالت سکوت قرار گرفت 😴.")
         else:
-            await event.edit("ℹ️ این گروه قبلاً ثبت شده بود.")
+            await event.edit("این گروه ساخته😴.")
 
     # --- ثبت کپی برای همه اکانت‌ها ---
     @client.on(events.NewMessage(pattern=r"^\.ثبت کپی$"))
     async def register_copy_group(event):
         if not is_owner(event): return
         if not event.is_group:
-            await event.edit("❌ فقط در گروه کار می‌کند.")
+            await event.edit("خو جقی برو تو گروه بزن🤦🏻‍♂️.")
             return
         
         gid = event.chat_id
         if gid not in groups:
             groups.append(gid)
             save_state()
-            await event.edit("✅ گروه برای همه اکانت‌ها ثبت شد.")
+            await event.edit("کی دست کرد تو شورت معلم❤️‍🔥🦦")
             await send_status()
         else:
-            await event.edit("ℹ️ این گروه قبلاً برای همه ثبت شده بود.")
+            await event.edit("خو ی بار دست کردی تو شورت معلم بسه دیگه چیو دقیقا میخوای؟🤦🏻‍♂️.")
 
     # --- حذف گروه ---
     @client.on(events.NewMessage(pattern=r"^\.حذف$"))
     async def unregister_group(event):
         if not is_owner(event): return
         if not event.is_group:
-            await event.edit("❌ فقط در گروه کار می‌کند.")
+            await event.edit("تو پیوی نزن خو جقی🤦🏻‍♂️.")
             return
         
         gid = event.chat_id
@@ -73,7 +73,7 @@ def register_save_group(client, state, groups, save_state, send_status):
             removed = True
         if removed:
             save_state()
-            await event.edit("⛔ گروه حذف شد.")
+            await event.edit("گروه از حالت سکوت در اومد 🦦.")
             await send_status()
         else:
             await event.edit("ℹ️ این گروه قبلاً ثبت نشده بود.")
