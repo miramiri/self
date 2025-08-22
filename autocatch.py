@@ -9,8 +9,8 @@ ALLOWED_CMD_PATTERN = re.compile(r'^[\w\s./@#:\-+=!?(),]+$')
 def _now_ts():
     return int(time.time())
 
-def register_autocatch(client, state, session_name, conn):
-    """
+def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
+    ...
     ثبت هندلرهای اتوکچ روی کلاینت
     - auto_groups: فقط اتوکچ (اختصاصی هر اکانت)
     - copy_groups: گروه‌های کپی (از دیتابیس)
