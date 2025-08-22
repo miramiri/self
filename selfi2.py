@@ -67,8 +67,11 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, c
         else:
             text += "✨ کاربران کپی پلاس: (هیچ)\n\n"
 
-        # گروه‌های اتوکچ از دیتابیس
-        auto_groups = db_get_auto_groups(conn, session_name)
+        # گروه‌های اتوکچ (state + دیتابیس)
+        auto_groups_db = db_get_auto_groups(conn, session_name)
+        auto_groups_state = state.get("auto_groups", [])
+        auto_groups = list(set(auto_groups_db + auto_groups_state))
+
         if auto_groups:
             lines = []
             for gid in auto_groups:
@@ -81,9 +84,12 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, c
             text += "🏷 گروه‌های اتوکچ:\n" + "\n".join(lines) + "\n\n"
         else:
             text += "🏷 گروه‌های اتوکچ: (هیچ)\n\n"
+        # گروه‌های کپی (از دیتابیس + groups سراسری)
+        copy_groups_db = db_get_copy_groups(conn, session_name)
+        copy_groups_state = state.get("copy_groups", [])
+        copy_groups_global = globals().get("GLOBAL_GROUPS", [])  # لیست سراسری که تو save_group استفاده میشه
+        copy_groups = list(set(copy_groups_db + copy_groups_state + copy_groups_global))
 
-        # گروه‌های کپی از دیتابیس
-        copy_groups = db_get_copy_groups(conn, session_name)
         if copy_groups:
             lines = []
             for gid in copy_groups:
@@ -96,6 +102,7 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, c
             text += "🏷 گروه‌های کپی:\n" + "\n".join(lines) + "\n\n"
         else:
             text += "🏷 گروه‌های کپی: (هیچ)\n\n"
+
 
         await event.edit(text)
 
