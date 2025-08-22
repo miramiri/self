@@ -24,8 +24,7 @@ def db_get_auto_groups(conn, session_name):
         return [r[0] for r in cur.fetchall()]
 
 # --- ثبت دستورات اضافی ---
-def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status):
-    # بقیه کد همون باشه
+def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, conn, session_name):
     ...
     def is_owner(e):
         return e.sender_id == state["owner_id"]
