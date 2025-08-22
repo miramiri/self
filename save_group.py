@@ -102,3 +102,91 @@ def register_save_group(client, state, groups, save_state, send_status, conn=Non
             await send_status()
         else:
             await event.edit("این گروه اصلا سکوت نیست🤨.")
+   # --- ثبت با آیدی عددی یا یوزرنیم ---
+    @client.on(events.NewMessage(pattern=r"^\.ثبت (.+)$"))
+    async def register_group_by_input(event):
+        if not is_owner(event): 
+            return
+        raw = event.pattern_match.group(1).strip()
+
+        # اگر عدد بود (chat_id)
+        if raw.isdigit():
+            gid = int(raw)
+            try:
+                chat = await client.get_entity(gid)
+            except Exception as e:
+                await event.edit(f"❌ خطا در گرفتن گروه با آیدی {gid}: {e}")
+                return
+        else:
+            # اگر یوزرنیم بود
+            if not raw.startswith("@"):
+                raw = "@" + raw
+            try:
+                chat = await client.get_entity(raw)
+                gid = chat.id
+            except Exception as e:
+                await event.edit(f"❌ خطا در گرفتن گروه با یوزرنیم {raw}: {e}")
+                return
+
+        # ذخیره‌سازی
+        if gid not in state["auto_groups"]:
+            state["auto_groups"].append(gid)
+            save_state()
+            if conn and session_name:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO auto_groups (session_name, gid)
+                        VALUES (%s, %s)
+                        ON CONFLICT (session_name, gid) DO NOTHING;
+                    """, (session_name, gid))
+            await event.edit(f"✅ {chat.title} → گروه سکوت شد 😴.")
+        else:
+            await event.edit(f"ℹ️ {chat.title} → از قبل زدی جقی 😴.")
+
+    # --- حذف با آیدی عددی یا یوزرنیم ---
+    @client.on(events.NewMessage(pattern=r"^\.حذف (.+)$"))
+    async def unregister_group_by_input(event):
+        if not is_owner(event): 
+            return
+        raw = event.pattern_match.group(1).strip()
+
+        if raw.isdigit():
+            gid = int(raw)
+            try:
+                chat = await client.get_entity(gid)
+            except:
+                chat = None
+        else:
+            if not raw.startswith("@"):
+                raw = "@" + raw
+            try:
+                chat = await client.get_entity(raw)
+                gid = chat.id
+            except:
+                gid = None
+                chat = None
+
+        if not gid:
+            await event.edit(f"❌ گروه {raw} پیدا نشد.")
+            return
+
+        removed = False
+        if gid in state["auto_groups"]:
+            state["auto_groups"].remove(gid)
+            removed = True
+        if gid in groups:
+            groups.remove(gid)
+            removed = True
+
+        if removed:
+            save_state()
+            if conn and session_name:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM auto_groups WHERE session_name = %s AND gid = %s;", (session_name, gid))
+                    cur.execute("DELETE FROM copy_groups WHERE session_name = %s AND gid = %s;", (session_name, gid))
+            if chat:
+                await event.edit(f"🗑 {chat.title} → گروه صدا دار شد از الا کصشعرایی که میگن میبینی 🦦.")
+            else:
+                await event.edit(f"🗑 گروه {gid} حذف شد 🦦.")
+        else:
+            await event.edit("ℹ️ این گروه اصلا نزدی جقی نشده بود 🤨.")
