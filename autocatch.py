@@ -9,12 +9,6 @@ def _now_ts():
     return int(time.time())
 
 def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
-    """
-    ثبت هندلرهای اتوکچ روی کلاینت
-    - auto_groups: فقط اتوکچ (اختصاصی هر اکانت)
-    - GLOBAL_GROUPS: گروه‌های کپی عمومی
-    """
-
     if "catch_delay" not in state:
         state["catch_delay"] = 1.0
     if "pending_catches" not in state:
@@ -86,10 +80,11 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                         print(f"⚠️ خطا در ارسال Humanizer: {ex}")
 
         # حالت گرفتن کاراکتر جدید
-        if "got a new character" in text.lower():
+        if "got a new character" in text.lower() or "you got" in text.lower():  # FIX broaden condition
             try:
                 await asyncio.sleep(state.get("catch_delay", 1.0))
-                await client.send_message(gid, state.get("funny_text", ""))
+                funny_text = state.get("funny_text") or "😂✨"  # FIX ensure fallback text
+                await client.send_message(gid, funny_text)
             except Exception:
                 pass
 
@@ -103,6 +98,16 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                 if target not in state["echo_users"]:
                     state["echo_users"].append(target)
                     acted = True
+
+        # --- Ensure copy re-enables when turned on ---
+        if state.get("copy_status") == "on" and not state.get("echo_users"):  # FIX
+            for u in saved_users:
+                if u not in state["echo_users"]:
+                    state["echo_users"].append(u)
+            cpu = state.get("copy_plus_user")
+            if cpu and cpu not in state["echo_users"]:
+                state["echo_users"].append(cpu)
+            acted = True
 
         save_state()
         if acted:
