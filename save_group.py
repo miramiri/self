@@ -47,7 +47,7 @@ ON CONFLICT (session_name, gid) DO NOTHING;
 """, (session_name, gid))
 await event.edit("گروه در حالت سکوت قرار گرفت 😴.")
 else:
-await event.edit("این گروه ساکته😴.")
+await event.edit("این گروه ساخته😴.")
 
 
 # --- ثبت کپی برای همه اکانت‌ها ---
@@ -60,4 +60,24 @@ return
 gid = event.chat_id
 if gid not in groups:
 groups.append(gid)
+save_state()
+if conn and session_name:
+with conn.cursor() as cur:
+cur.execute("""
+INSERT INTO copy_groups (session_name, gid)
+VALUES (%s, %s)
+ON CONFLICT (session_name, gid) DO NOTHING;
+""", (session_name, gid))
+await event.edit("کی دست کرد تو شورت معلم❤️‍🔥🦦")
+await send_status()
+else:
+await event.edit("خو ی بار دست کردی تو شورت معلم بسه دیگه چیو دقیقا میخوای؟🤦🏻‍♂️.")
+
+
+# --- حذف گروه ---
+@client.on(events.NewMessage(pattern=r"^\.حذف$"))
+async def unregister_group(event):
+if not is_owner(event): return
+if not event.is_group:
+await event.edit("تو پیوی نزن خو جقی🤦🏻‍♂️.")
 await event.edit("این گروه اصلا سکوت نیست🤨.")
