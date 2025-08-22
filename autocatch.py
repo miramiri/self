@@ -1,3 +1,4 @@
+
 import re
 import time
 import asyncio
@@ -8,7 +9,13 @@ ALLOWED_CMD_PATTERN = re.compile(r'^[\w\s./@#:\-+=!?(),]+$')
 def _now_ts():
     return int(time.time())
 
-def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
+def register_autocatch(client, state, session_name, conn):
+    """
+    ثبت هندلرهای اتوکچ روی کلاینت
+    - auto_groups: فقط اتوکچ (اختصاصی هر اکانت)
+    - copy_groups: گروه‌های کپی (از دیتابیس)
+    """
+
     if "catch_delay" not in state:
         state["catch_delay"] = 1.0
     if "pending_catches" not in state:
@@ -23,16 +30,26 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
         except Exception:
             return
         state["catch_delay"] = delay
-        save_state()
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO settings (session_name, key, value)
+                VALUES (%s, 'catch_delay', %s)
+                ON CONFLICT (session_name, key) DO UPDATE SET value = EXCLUDED.value;
+            """, (session_name, str(delay)))
         await event.edit(f"⚡ سرعت کچ روی {delay} ثانیه تنظیم شد.")
-        await send_status()
 
     # --- واکنش به پیام Character_Catcher_Bot و فوروارد به کالکت
     @client.on(events.NewMessage(from_users=["Character_Catcher_Bot"]))
     async def check_bot(event):
         gid = event.chat_id
 
-        if gid not in (state.get("auto_groups", []) + GLOBAL_GROUPS):
+        with conn.cursor() as cur:
+            cur.execute("SELECT gid FROM auto_groups WHERE session_name = %s AND gid = %s;", (session_name, gid))
+            in_auto = cur.fetchone() is not None
+            cur.execute("SELECT gid FROM copy_groups WHERE session_name = %s AND gid = %s;", (session_name, gid))
+            in_copy = cur.fetchone() is not None
+
+        if not in_auto and not in_copy:
             return
 
         text = event.raw_text or ""
@@ -44,8 +61,11 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                     "time": _now_ts()
                 })
                 state["echo_users"] = []
-                save_state()
-                await send_status()
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO catches (session_name, gid, ts)
+                        VALUES (%s, %s, %s);
+                    """, (session_name, gid, _now_ts()))
 
                 try:
                     await asyncio.sleep(state.get("catch_delay", 1.0))
@@ -76,15 +96,19 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                         await asyncio.sleep(state.get("catch_delay", 1.0))
                         await client.send_message(gid, cmd)
                         acted = True
+                        with conn.cursor() as cur:
+                            cur.execute("""
+                                INSERT INTO actions (session_name, gid, action, ts)
+                                VALUES (%s, %s, %s, %s);
+                            """, (session_name, gid, cmd, _now_ts()))
                     except Exception as ex:
                         print(f"⚠️ خطا در ارسال Humanizer: {ex}")
 
         # حالت گرفتن کاراکتر جدید
-        if "got a new character" in text.lower() or "you got" in text.lower():  # FIX broaden condition
+        if "got a new character" in text.lower():
             try:
                 await asyncio.sleep(state.get("catch_delay", 1.0))
-                funny_text = state.get("funny_text") or "😂✨"  # FIX ensure fallback text
-                await client.send_message(gid, funny_text)
+                await client.send_message(gid, state.get("funny_text", ""))
             except Exception:
                 pass
 
@@ -99,16 +123,12 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                     state["echo_users"].append(target)
                     acted = True
 
-        # --- Ensure copy re-enables when turned on ---
-        if state.get("copy_status") == "on" and not state.get("echo_users"):  # FIX
-            for u in saved_users:
-                if u not in state["echo_users"]:
-                    state["echo_users"].append(u)
-            cpu = state.get("copy_plus_user")
-            if cpu and cpu not in state["echo_users"]:
-                state["echo_users"].append(cpu)
-            acted = True
+            if acted:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO actions (session_name, gid, action, ts)
+                        VALUES (%s, %s, %s, %s);
+                    """, (session_name, gid, 'got_character', _now_ts()))
 
-        save_state()
-        if acted:
-            await send_status()
+        # بدون چاپ خروجی در ترمینال (مخفی)
+        return

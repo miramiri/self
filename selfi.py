@@ -16,6 +16,7 @@ from help1 import register_help1
 from sargarmi import register_sargarmi
 from sell import register_sell
 from save_group import register_save_group
+import psycopg2
 
 # --- سرور keep_alive برای ریپلیت ---
 app = Flask('')
@@ -30,6 +31,38 @@ def run():
 def keep_alive():
     t = Thread(target=run)
     t.start()
+# --- اتصال به دیتابیس Railway ---
+DATABASE_URL = os.getenv("DATABASE_URL")
+conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+conn.autocommit = True
+
+# ایجاد جدول‌ها
+with conn.cursor() as cur:
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS groups (
+        id SERIAL PRIMARY KEY,
+        session_name TEXT NOT NULL,
+        gid BIGINT NOT NULL,
+        UNIQUE (session_name, gid)
+    );
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS copy_groups (
+        id SERIAL PRIMARY KEY,
+        session_name TEXT NOT NULL,
+        gid BIGINT NOT NULL,
+        UNIQUE (session_name, gid)
+    );
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS auto_groups (
+        id SERIAL PRIMARY KEY,
+        session_name TEXT NOT NULL,
+        gid BIGINT NOT NULL,
+        UNIQUE (session_name, gid)
+    );
+    """)
+
 
 # --- خواندن API_ID و API_HASH ---
 with open("confing.json", "r", encoding="utf-8") as f:
