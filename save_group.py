@@ -4,7 +4,7 @@ import json, os
 
 # ---------------- فایل دیتا ----------------
 def get_data_file(session_name):
-return f"data_{session_name}.json"
+    return f"data_{session_name}.json"
 
 
 def load_state(session_name):
