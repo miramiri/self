@@ -19,17 +19,19 @@ from sargarmi import register_sargarmi
 from sell import register_sell
 from save_group import register_save_group
 
-# --- اتصال به دیتابیس PostgreSQL ---
-DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL")
-if not DATABASE_URL:
-    raise ValueError("❌ DATABASE_URL/DATABASE_PUBLIC_URL is not set")
+# --- ریست و ساخت دوباره جدول‌ها ---
 
-conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-cur = conn.cursor() 
+cur = conn.cursor()
 
-# --- ساخت جدول‌ها در صورت نبودن ---
+# حذف جدول‌ها (اگه بودن)
+cur.execute("DROP TABLE IF EXISTS auto_groups CASCADE;")
+cur.execute("DROP TABLE IF EXISTS copy_groups CASCADE;")
+cur.execute("DROP TABLE IF EXISTS groups CASCADE;")
+cur.execute("DROP TABLE IF EXISTS sessions CASCADE;")
+
+# ساخت دوباره جدول‌ها
 cur.execute("""
-CREATE TABLE IF NOT EXISTS auto_groups (
+CREATE TABLE auto_groups (
     id SERIAL PRIMARY KEY,
     session_name TEXT NOT NULL,
     gid BIGINT NOT NULL,
@@ -38,7 +40,7 @@ CREATE TABLE IF NOT EXISTS auto_groups (
 """)
 
 cur.execute("""
-CREATE TABLE IF NOT EXISTS copy_groups (
+CREATE TABLE copy_groups (
     id SERIAL PRIMARY KEY,
     session_name TEXT NOT NULL,
     gid BIGINT NOT NULL,
@@ -47,28 +49,21 @@ CREATE TABLE IF NOT EXISTS copy_groups (
 """)
 
 cur.execute("""
-CREATE TABLE IF NOT EXISTS groups (
+CREATE TABLE groups (
     id SERIAL PRIMARY KEY,
-    gid BIGINT UNIQUE NOT NULL
+    chat_id BIGINT UNIQUE NOT NULL
 );
 """)
 
 cur.execute("""
-CREATE TABLE IF NOT EXISTS sessions (
+CREATE TABLE sessions (
     session_name TEXT PRIMARY KEY,
     state JSONB
 );
 """)
 
 conn.commit()
-
-cur.execute("""
-CREATE TABLE IF NOT EXISTS groups (
-    id SERIAL PRIMARY KEY,
-    chat_id BIGINT UNIQUE
-);
-""")
-conn.commit()
+print("✅ همه جدول‌ها ساخته شد")
 
 # --- سرور keep_alive برای ریپلیت ---
 app = Flask('')
