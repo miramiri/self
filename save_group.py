@@ -163,16 +163,18 @@ async def save_copy(event):
     sender = await event.get_sender()
     user_id = sender.id
     group_name = event.pattern_match.group(1)
+    gid = event.chat_id   # 🔹 آیدی گروه فعلی
 
     if not group_name:
         await event.reply(⚠️ لطفا اسم گروه رو بعد از دستور وارد کن.")
         return
 
+    # ذخیره نام گروه برای این کاربر
     GLOBAL_GROUPS[user_id] = group_name
     save_state()
     await event.reply(f"✅ گروه {group_name} برای کپی ثبت شد.")
 
-    # 🔹 اینجا چک کن GLOBAL_GROUPS دیکشنریه یا نه
+    # 🔹 ثبت گروه در لیست کلی برای همه اکانت‌ها
     if isinstance(GLOBAL_GROUPS, dict):
         GLOBAL_GROUPS.setdefault("copy_groups", [])
         if gid not in GLOBAL_GROUPS["copy_groups"]:
@@ -181,7 +183,7 @@ async def save_copy(event):
             if send_status:
                 await send_status()
         else:
-            await event.edit(f"این گروه {gid} از قبل برای کپی ثبت شده بود ✅.")
+            await event.edit(f"ℹ️ این گروه {gid} از قبل برای کپی ثبت شده بود.")
 
     # --- حذف گروه ---
     @client.on(events.NewMessage(pattern=r"^\.حذف(?:\s+(.+))?$"))
