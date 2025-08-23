@@ -20,8 +20,11 @@ from sell import register_sell
 from save_group import register_save_group
 
 # --- اتصال به دیتابیس PostgreSQL ---
-DATABASE_URL = os.getenv("DATABASE_URL")
-conn = psycopg2.connect(DATABASE_URL)
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL")
+if not DATABASE_URL:
+    raise ValueError("❌ DATABASE_URL/DATABASE_PUBLIC_URL is not set")
+
+conn = psycopg2.connect(DATABASE_URL, sslmode="require")
 cur = conn.cursor()
 
 cur.execute("""
