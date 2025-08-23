@@ -350,7 +350,6 @@ async def setup_client(session_name):
 
     # ---------- ماژول‌ها
     register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
-    register_save_group(client, state, GLOBAL_GROUPS, save_state, send_status, session_name)
     register_games(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_menu(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sargarmi_plus(client, state, GLOBAL_GROUPS, save_state, send_status)  # سرگرمی پیشرفته
@@ -358,7 +357,8 @@ async def setup_client(session_name):
     register_help1(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sargarmi(client, state, GLOBAL_GROUPS, save_state, send_status)  # سرگرمی ساده
     register_sell(client)
-    register_save_group(client, state, GLOBAL_GROUPS, save_state, send_status)
+    register_save_group(client, state, GLOBAL_GROUPS, save_state, send_status, session_name)
+
 
     return client
 
