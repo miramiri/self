@@ -157,32 +157,19 @@ def register_save_group(
             await event.edit(f"گروه {gid} از قبل ساکته😴.")
 
 # --- ثبت کپی برای همه اکانت‌ها ---
-@client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?:\s+(.+))?$"))
-async def register_copy_group(event):
-    if not is_owner(event):
-        return
+    @client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?:\s+(.+))?$"))
+    async def save_copy(event):
+        sender = await event.get_sender()
+        user_id = sender.id
+        group_name = event.pattern_match.group(1)
 
-    arg = event.pattern_match.group(1)
-    gid = await _resolve_chat_id(client, event, arg)
-    if gid is None:
-        return
+        if not group_name:
+            await event.reply("⚠️ لطفا اسم گروه رو بعد از دستور وارد کن.")
+            return
 
-    if gid not in state["copy_groups"]:
-        state["copy_groups"].append(gid)
-        save_state(session_name, state)  # type: ignore[arg-type]
-
-        if conn and session_name:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    INSERT INTO copy_groups (session_name, gid)
-                    VALUES (%s, %s)
-                    ON CONFLICT (session_name, gid) DO NOTHING;
-                    """,
-                    (session_name, gid),
-                )
-            conn.commit()
-
+        GLOBAL_GROUPS[user_id] = group_name
+        save_state()
+        await event.reply(f"✅ گروه {group_name} برای کپی ثبت شد.")
         # 🔹 اینجا چک کن GLOBAL_GROUPS دیکشنریه یا نه
         if isinstance(GLOBAL_GROUPS, dict):
             GLOBAL_GROUPS.setdefault("copy_groups", [])
