@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+# selfi2_fixed.py
+
 from datetime import datetime
+
 import jdatetime
 import pytz
 from telethon import events
@@ -7,30 +10,13 @@ from telethon.tl.functions.contacts import BlockRequest
 from telethon.tl.functions.messages import SendReactionRequest
 from telethon.tl.types import ReactionEmoji
 
-# --- توابع دیتابیس ---
-def db_get_groups(conn, session_name):
-    with conn.cursor() as cur:
-        cur.execute("SELECT gid FROM groups WHERE session_name = %s;", (session_name,))
-        return [r[0] for r in cur.fetchall()]
 
-def db_get_copy_groups(conn, session_name):
-    with conn.cursor() as cur:
-        cur.execute("SELECT gid FROM copy_groups WHERE session_name = %s;", (session_name,))
-        return [r[0] for r in cur.fetchall()]
-
-def db_get_auto_groups(conn, session_name):
-    with conn.cursor() as cur:
-        cur.execute("SELECT gid FROM auto_groups WHERE session_name = %s;", (session_name,))
-        return [r[0] for r in cur.fetchall()]
-
-# --- ثبت دستورات اضافی ---
-def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, conn, session_name):
-    ...
+def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status):
     def is_owner(e):
         return e.sender_id == state["owner_id"]
 
-    # --- لیست گروه‌ها
-    @client.on(events.NewMessage(pattern=r"^\.لیست$"))
+     # --- لیست کاربران و گروه‌ها (نمایش echo_users و copy_plus برگردانده شد)
+    @client.on(events.NewMessage(pattern=r"^.لیست$"))
     async def list_items(event):
         if not is_owner(event):
             return
@@ -67,11 +53,8 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, c
         else:
             text += "✨ کاربران کپی پلاس: (هیچ)\n\n"
 
-        # گروه‌های اتوکچ (state + دیتابیس)
-        auto_groups_db = db_get_auto_groups(conn, session_name)
-        auto_groups_state = state.get("auto_groups", [])
-        auto_groups = list(set(auto_groups_db + auto_groups_state))
-
+        # گروه‌های عادی (فقط اتوکچ)
+        auto_groups = state.get("auto_groups", [])
         if auto_groups:
             lines = []
             for gid in auto_groups:
@@ -84,39 +67,37 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, c
             text += "🏷 گروه‌های اتوکچ:\n" + "\n".join(lines) + "\n\n"
         else:
             text += "🏷 گروه‌های اتوکچ: (هیچ)\n\n"
-        # گروه‌های کپی (از دیتابیس + groups سراسری)
-        copy_groups_db = db_get_copy_groups(conn, session_name)
-        copy_groups_state = state.get("copy_groups", [])
-        copy_groups_global = globals().get("GLOBAL_GROUPS", [])  # لیست سراسری که تو save_group استفاده میشه
-        copy_groups = list(set(copy_groups_db + copy_groups_state + copy_groups_global))
 
-        if copy_groups:
+        # گروه‌های کپی عمومی (از فایل groups.json)
+        if GLOBAL_GROUPS:
             lines = []
-            for gid in copy_groups:
+            for gid in GLOBAL_GROUPS:
                 try:
                     g = await client.get_entity(gid)
                     title = getattr(g, "title", "گروه")
                     lines.append(f"🟣 {title} — `{gid}`")
                 except Exception:
                     lines.append(f"🟣 `{gid}`")
-            text += "🏷 گروه‌های کپی:\n" + "\n".join(lines) + "\n\n"
+            text += "🏷 گروه‌های کپی (عمومی):\n" + "\n".join(lines) + "\n\n"
         else:
-            text += "🏷 گروه‌های کپی: (هیچ)\n\n"
+            text += "🏷 گروه‌های کپی (عمومی): (هیچ)\n\n"
 
-
+        # ✅ این خط باید اینجا باشه
         await event.edit(text)
 
     # --- تنظیم متن طنز
-    @client.on(events.NewMessage(pattern=r"^\.تنظیم (.+)$"))
+    @client.on(events.NewMessage(pattern=r"^.تنظیم (.+)$"))
     async def set_funny_text(event):
         if not is_owner(event):
             return
         txt = event.pattern_match.group(1).strip()
         state["funny_text"] = txt
+        save_state()
         await event.edit(f"✅ متن تنظیم شد: {txt}")
+        await send_status()
 
     # --- بلاک کاربر
-    @client.on(events.NewMessage(pattern=r"^\.بلاک(?:\s+(\d+))?$"))
+    @client.on(events.NewMessage(pattern=r"^.بلاک(?:\s+(\d+))?$"))
     async def block_user(event):
         if not is_owner(event):
             return
@@ -139,7 +120,7 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, c
             await event.edit(f"❌ خطا: {e}")
 
     # --- آیدی
-    @client.on(events.NewMessage(pattern=r"^\.آیدی$"))
+    @client.on(events.NewMessage(pattern=r"^.آیدی$"))
     async def get_id(event):
         if not is_owner(event):
             return
@@ -161,7 +142,7 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, c
         await event.edit(txt)
 
     # --- تاریخ
-    @client.on(events.NewMessage(pattern=r"^\.تاریخ$"))
+    @client.on(events.NewMessage(pattern=r"^.تاریخ$"))
     async def show_date(event):
         if not is_owner(event):
             return
@@ -172,7 +153,7 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, c
         await event.edit(f"📆 امروز:\n🗓 میلادی: {g}\n📆 شمسی: {sh}")
 
     # --- واکنش (تنظیم)
-    @client.on(events.NewMessage(pattern=r"^\.واکنش (.+)$"))
+    @client.on(events.NewMessage(pattern=r"^.واکنش (.+)$"))
     async def set_react(event):
         if not is_owner(event):
             return
@@ -185,6 +166,7 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, c
 
         state.setdefault("react_users", {})
         state["react_users"][user.id] = emoji
+        save_state()
         await event.edit(f"✅ از حالا روی پیام‌های {getattr(user, 'first_name', 'کاربر')} ری‌اکشن {emoji} می‌زنم.")
 
     # --- هندلر ری‌اکشن اتوماتیک
@@ -196,6 +178,7 @@ def register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, c
         emoji = reacts.get(event.sender_id)
         if not emoji:
             return
+
         try:
             await client(
                 SendReactionRequest(
