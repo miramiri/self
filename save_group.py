@@ -156,42 +156,44 @@ def register_save_group(
         else:
             await event.edit(f"گروه {gid} از قبل ساکته😴.")
 
-    # --- ثبت کپی برای همه اکانت‌ها ---
-    @client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?:\s+(.+))?$"))
-    async def register_copy_group(event):
-        if not is_owner(event):
-            return
+# --- ثبت کپی برای همه اکانت‌ها ---
+@client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?:\s+(.+))?$"))
+async def register_copy_group(event):
+    if not is_owner(event):
+        return
 
-        arg = event.pattern_match.group(1)
-        gid = await _resolve_chat_id(client, event, arg)
-        if gid is None:
-            return
+    arg = event.pattern_match.group(1)
+    gid = await _resolve_chat_id(client, event, arg)
+    if gid is None:
+        return
 
-        if gid not in state["copy_groups"]:
-            state["copy_groups"].append(gid)
-            save_state(session_name, state)  # type: ignore[arg-type]
+    if gid not in state["copy_groups"]:
+        state["copy_groups"].append(gid)
+        save_state(session_name, state)  # type: ignore[arg-type]
 
-            if conn and session_name:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        """
-                        INSERT INTO copy_groups (session_name, gid)
-                        VALUES (%s, %s)
-                        ON CONFLICT (session_name, gid) DO NOTHING;
-                        """,
-                        (session_name, gid),
-                    )
-                conn.commit()
+        if conn and session_name:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO copy_groups (session_name, gid)
+                    VALUES (%s, %s)
+                    ON CONFLICT (session_name, gid) DO NOTHING;
+                    """,
+                    (session_name, gid),
+                )
+            conn.commit()
 
-            if GLOBAL_GROUPS is not None:
-                GLOBAL_GROUPS.setdefault("copy_groups", [])
-                if gid not in GLOBAL_GROUPS["copy_groups"]:
-                    GLOBAL_GROUPS["copy_groups"].append(gid)
+        # 🔹 اینجا چک کن GLOBAL_GROUPS دیکشنریه یا نه
+        if isinstance(GLOBAL_GROUPS, dict):
+            GLOBAL_GROUPS.setdefault("copy_groups", [])
+            if gid not in GLOBAL_GROUPS["copy_groups"]:
+                GLOBAL_GROUPS["copy_groups"].append(gid)
 
-            await event.edit(f"✅ گروه {gid} برای کپی روی همه اکانت‌ها ثبت شد.")
+        await event.edit(f"✅ گروه {gid} برای کپی روی همه اکانت‌ها ثبت شد.")
+        if send_status:
             await send_status()
-        else:
-            await event.edit(f"این گروه {gid} از قبل برای کپی ثبت شده بود ✅.")
+    else:
+        await event.edit(f"این گروه {gid} از قبل برای کپی ثبت شده بود ✅.")
 
     # --- حذف گروه ---
     @client.on(events.NewMessage(pattern=r"^\.حذف(?:\s+(.+))?$"))
