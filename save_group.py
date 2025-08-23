@@ -102,102 +102,68 @@ def register_save_group(client, state, groups, save_state, send_status, conn=Non
             await send_status()
         else:
             await event.edit("گروه از حالت سکوت در اومد 🦦.")
-# --- ثبت با آیدی عددی یا یوزرنیم ---
-@client.on(events.NewMessage(pattern=r"^\.ثبت (.+)$"))
-async def register_group_by_input(event):
-    if not is_owner(event):
-        return
-    raw = event.pattern_match.group(1).strip()
-    gid = None
-    chat = None
-
-    try:
-        # اگر آیدی عددی (حتی منفی) بود
-        if re.match(r"^-?\d+$", raw):
-            gid = int(raw)
+    # --- ثبت گروه با یوزرنیم ---
+    @client.on(events.NewMessage(pattern=r"^\.ثبت یوزر (.+)$"))
+    async def save_group_username(event):
+        if not event.is_private:
             try:
-                chat = await client.get_entity(gid)
-            except:
-                chat = None
-        else:
-            # اگر یوزرنیم بود
-            if not raw.startswith("@"):
-                raw = "@" + raw
-            chat = await client.get_entity(raw)
-            gid = chat.id
-    except Exception as e:
-        await event.edit(f"❌ گروه پیدا نشد: {e}")
-        return
+                username = event.pattern_match.group(1).strip()
+                entity = await client.get_entity(username)
+                gid = entity.id
+                gname = getattr(entity, "title", username)
 
-    title = getattr(chat, "title", str(gid)) if chat else str(gid)
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO groups (session_name, gid) VALUES (%s, %s) ON CONFLICT DO NOTHING;",
+                        (session_name, gid)
+                    )
+                await event.reply(f"✅ [{gname}] ثبت شد")
 
-    if gid not in state["auto_groups"]:
-        state["auto_groups"].append(gid)
-        save_state()
-        if conn and session_name:
-            with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO auto_groups (session_name, gid)
-                    VALUES (%s, %s)
-                    ON CONFLICT (session_name, gid) DO NOTHING;
-                """, (session_name, gid))
-        await event.edit(f"✅ {title} → گروه ثبت شد 😴.")
-        try:
-            await send_status()
-        except Exception:
-            pass
-    else:
-        await event.edit(f"ℹ️ {title} → قبلاً ثبت شده 😴.")
+            except Exception as e:
+                await event.reply(f"❌ خطا در ثبت: {e}")
 
-
-# --- حذف با آیدی عددی یا یوزرنیم ---
-@client.on(events.NewMessage(pattern=r"^\.حذف (.+)$"))
-async def unregister_group_by_input(event):
-    if not is_owner(event):
-        return
-    raw = event.pattern_match.group(1).strip()
-    gid = None
-    chat = None
-
-    try:
-        if re.match(r"^-?\d+$", raw):
-            gid = int(raw)
+    # --- ثبت گروه با آیدی ---
+    @client.on(events.NewMessage(pattern=r"^\.ثبت آیدی (\d+)$"))
+    async def save_group_id(event):
+        if not event.is_private:
             try:
-                chat = await client.get_entity(gid)
-            except:
-                chat = None
-        else:
-            if not raw.startswith("@"):
-                raw = "@" + raw
-            chat = await client.get_entity(raw)
-            gid = chat.id
-    except:
-        pass
+                gid = int(event.pattern_match.group(1))
+                entity = await client.get_entity(gid)
+                gname = getattr(entity, "title", str(gid))
 
-    if not gid:
-        await event.edit("❌ گروه پیدا نشد.")
-        return
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO groups (session_name, gid) VALUES (%s, %s) ON CONFLICT DO NOTHING;",
+                        (session_name, gid)
+                    )
+                await event.reply(f"✅ [{gname}] ثبت شد")
 
-    title = getattr(chat, "title", str(gid)) if chat else str(gid)
+            except Exception as e:
+                await event.reply(f"❌ خطا در ثبت: {e}")
 
-    removed = False
-    if gid in state["auto_groups"]:
-        state["auto_groups"].remove(gid)
-        removed = True
-    if gid in groups:  # اگر توی کپی‌گروپ‌های سراسری هم بود
-        groups.remove(gid)
-        removed = True
+    # --- حذف گروه با یوزرنیم یا آیدی ---
+    @client.on(events.NewMessage(pattern=r"^\.حذف (.+)$"))
+    async def delete_group(event):
+        if not event.is_private:
+            try:
+                target = event.pattern_match.group(1).strip()
 
-    if removed:
-        save_state()
-        if conn and session_name:
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM auto_groups WHERE session_name = %s AND gid = %s;", (session_name, gid))
-                cur.execute("DELETE FROM copy_groups WHERE session_name = %s AND gid = %s;", (session_name, gid))
-        await event.edit(f"🗑 {title} → گروه حذف شد 🦦.")
-        try:
-            await send_status()
-        except Exception:
-            pass
-    else:
-        await event.edit(f"ℹ️ {title} → اصلاً ثبت نشده بود 🤨.")
+                # اگر عدد بود → آیدی
+                if target.isdigit():
+                    gid = int(target)
+                    entity = await client.get_entity(gid)
+                else:
+                    entity = await client.get_entity(target)
+                    gid = entity.id
+
+                gname = getattr(entity, "title", target)
+
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM groups WHERE session_name = %s AND gid = %s;",
+                        (session_name, gid)
+                    )
+                await event.reply(f"❌ [{gname}] حذف شد")
+
+            except Exception as e:
+                await event.reply(f"❌ خطا در حذف: {e}")
