@@ -99,7 +99,7 @@ def register_save_group(
         if not is_owner(event):
             return
         if not event.is_group:
-            await event.edit("❌ فقط داخل گروه میشه این دستور رو زد.")
+            await event.edit("[خو جقی دستور تو گروه بزن.")
             return
 
         gid = event.chat_id
@@ -156,21 +156,29 @@ def register_save_group(
         else:
             await event.edit(f"گروه {gid} از قبل ساکته😴.")
 
-    @client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?:\s+(.+))?$"))
-    async def save_copy(event):
-        sender = await event.get_sender()
-        user_id = sender.id
-        group_name = event.pattern_match.group(1)
-        gid = event.chat_id   # آیدی گروه فعلی
-
-        if not group_name:
-            await event.reply("⚠️ لطفا اسم گروه رو بعد از دستور وارد کن.")
+    # --- ثبت کپی برای همه اکانت‌ها ---
+    @client.on(events.NewMessage(pattern=r"^\.ثبت کپی$"))
+    async def register_copy_group(event):
+        if not is_owner(event): return
+        if not event.is_group:
+            await event.edit("خو جقی برو تو گروه بزن🤦🏻‍♂️.")
             return
+        
+        gid = event.chat_id
+        if gid not in groups:
+            groups.append(gid)
+            save_state()
+            await event.edit("کی دست کرد تو شورت معلم❤️‍🔥🦦")
+            await send_status()
+        else:
+            await event.edit("خو ی بار دست کردی تو شورت معلم بسه دیگه چیو دقیقا میخوای؟🤦🏻‍♂️.")
 
+        # ذخیره نام گروه برای این کاربر
         GLOBAL_GROUPS[user_id] = group_name
         save_state()
         await event.reply(f"✅ گروه {group_name} برای کپی ثبت شد.")
 
+        # 🔹 ثبت گروه در لیست کلی برای همه اکانت‌ها
         if isinstance(GLOBAL_GROUPS, dict):
             GLOBAL_GROUPS.setdefault("copy_groups", [])
             if gid not in GLOBAL_GROUPS["copy_groups"]:
@@ -180,7 +188,6 @@ def register_save_group(
                     await send_status()
             else:
                 await event.edit(f"ℹ️ این گروه {gid} از قبل برای کپی ثبت شده بود.")
-
     # 🔹 ثبت گروه در لیست کلی برای همه اکانت‌ها
     if isinstance(GLOBAL_GROUPS, dict):
         GLOBAL_GROUPS.setdefault("copy_groups", [])
