@@ -18,18 +18,21 @@ from help1 import register_help1
 from sargarmi import register_sargarmi
 from sell import register_sell
 from save_group import register_save_group
+import os, psycopg2
 
-# --- ریست و ساخت دوباره جدول‌ها ---
+# --- اتصال به دیتابیس ---
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL")
+if not DATABASE_URL:
+    raise ValueError("❌ DATABASE_URL/DATABASE_PUBLIC_URL is not set")
 
+conn = psycopg2.connect(DATABASE_URL, sslmode="require")
 cur = conn.cursor()
-
-# حذف جدول‌ها (اگه بودن)
+# --- ریست و ساخت دوباره جدول‌ها (فقط یک بار لازم داری) ---
 cur.execute("DROP TABLE IF EXISTS auto_groups CASCADE;")
 cur.execute("DROP TABLE IF EXISTS copy_groups CASCADE;")
 cur.execute("DROP TABLE IF EXISTS groups CASCADE;")
 cur.execute("DROP TABLE IF EXISTS sessions CASCADE;")
 
-# ساخت دوباره جدول‌ها
 cur.execute("""
 CREATE TABLE auto_groups (
     id SERIAL PRIMARY KEY,
