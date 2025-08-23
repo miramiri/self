@@ -11,6 +11,8 @@ def _now_ts():
 return int(time.time())
 
 
+
+
 def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
 """
 ثبت هندلرهای اتوکچ روی کلاینت
@@ -76,3 +78,15 @@ break
 # --- پردازش پاسخ از @collect_waifu_cheats_bot
 @client.on(events.NewMessage(from_users=["collect_waifu_cheats_bot"]))
 async def handle_collect(event):
+gid = event.chat_id
+
+
+if not state["pending_catches"].get(gid):
+return
+
+
+req = state["pending_catches"][gid].pop(0)
+saved_users = req["users"]
+text = (event.raw_text or "").strip()
+txt = text.lower()
+await send_status()
