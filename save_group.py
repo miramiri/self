@@ -164,7 +164,7 @@ def register_save_group(
         gid = event.chat_id   # آیدی گروه فعلی
 
         if not group_name:
-            await event.reply(⚠️ لطفا اسم گروه رو بعد از دستور وارد کن.")
+            await event.reply("⚠️ لطفا اسم گروه رو بعد از دستور وارد کن.")
             return
 
         GLOBAL_GROUPS[user_id] = group_name
