@@ -27,14 +27,14 @@ def register_save_group(client, state, GLOBAL_GROUPS, send_status, conn=None, se
         return e.sender_id == state.get("owner_id")
 
     async def resolve_chat_id(arg, event):
-        """تبدیل ورودی (عدد یا یوزرنیم) به chat_id"""
+        """تبدیل ورودی (عدد یا @username) به chat_id"""
         if not arg:
             return event.chat_id
         try:
             entity = await client.get_entity(arg)
             return entity.id
         except Exception:
-            await event.reply("❌ گروه پیدا نشد.")
+            await event.respond("❌ گروه پیدا نشد.")
             return None
 
     # --- ثبت فقط برای این اکانت ---
@@ -133,3 +133,4 @@ def register_save_group(client, state, GLOBAL_GROUPS, send_status, conn=None, se
             await event.respond(f"❎ گروه {gid} از حالت سکوت/کپی در اومد.")
             await send_status()
         else:
+            await event.respond(f"گروه {gid} اصلاً ثبت نشده بود🤨.")
