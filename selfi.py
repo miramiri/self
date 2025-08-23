@@ -18,55 +18,57 @@ from help1 import register_help1
 from sargarmi import register_sargarmi
 from sell import register_sell
 from save_group import register_save_group
-import os, psycopg2
+# -*- coding: utf-8 -*-
+import os
+import psycopg2
 
-# --- اتصال به دیتابیس ---
-DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL")
+# --- اتصال به دیتابیس PostgreSQL از Railway ---
+DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    raise ValueError("❌ DATABASE_URL/DATABASE_PUBLIC_URL is not set")
+    raise ValueError("❌ DATABASE_URL is not set in Railway Variables")
 
-conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-cur = conn.cursor()
-# --- ریست و ساخت دوباره جدول‌ها (فقط یک بار لازم داری) ---
-cur.execute("DROP TABLE IF EXISTS auto_groups CASCADE;")
-cur.execute("DROP TABLE IF EXISTS copy_groups CASCADE;")
-cur.execute("DROP TABLE IF EXISTS groups CASCADE;")
-cur.execute("DROP TABLE IF EXISTS sessions CASCADE;")
+try:
+    conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+    cur = conn.cursor()
 
-cur.execute("""
-CREATE TABLE auto_groups (
-    id SERIAL PRIMARY KEY,
-    session_name TEXT NOT NULL,
-    gid BIGINT NOT NULL,
-    UNIQUE(session_name, gid)
-);
-""")
+    # --- ساخت جدول‌ها در صورت نبودن ---
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS auto_groups (
+        id SERIAL PRIMARY KEY,
+        session_name TEXT NOT NULL,
+        gid BIGINT NOT NULL,
+        UNIQUE(session_name, gid)
+    );
+    """)
 
-cur.execute("""
-CREATE TABLE copy_groups (
-    id SERIAL PRIMARY KEY,
-    session_name TEXT NOT NULL,
-    gid BIGINT NOT NULL,
-    UNIQUE(session_name, gid)
-);
-""")
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS copy_groups (
+        id SERIAL PRIMARY KEY,
+        session_name TEXT NOT NULL,
+        gid BIGINT NOT NULL,
+        UNIQUE(session_name, gid)
+    );
+    """)
 
-cur.execute("""
-CREATE TABLE groups (
-    id SERIAL PRIMARY KEY,
-    chat_id BIGINT UNIQUE NOT NULL
-);
-""")
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS groups (
+        id SERIAL PRIMARY KEY,
+        chat_id BIGINT UNIQUE NOT NULL
+    );
+    """)
 
-cur.execute("""
-CREATE TABLE sessions (
-    session_name TEXT PRIMARY KEY,
-    state JSONB
-);
-""")
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS sessions (
+        session_name TEXT PRIMARY KEY,
+        state JSONB
+    );
+    """)
 
-conn.commit()
-print("✅ همه جدول‌ها ساخته شد")
+    conn.commit()
+    print("✅ همه جدول‌ها ساخته شدند و اتصال Railway درست است.")
+
+except Exception as e:
+    print("❌ خطا در اتصال به دیتابیس:", e)
 
 # --- سرور keep_alive برای ریپلیت ---
 app = Flask('')
