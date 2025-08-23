@@ -25,20 +25,41 @@ if not DATABASE_URL:
     raise ValueError("❌ DATABASE_URL/DATABASE_PUBLIC_URL is not set")
 
 conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-cur = conn.cursor()
+cur = conn.cursor() 
+
+# --- ساخت جدول‌ها در صورت نبودن ---
+cur.execute("""
+CREATE TABLE IF NOT EXISTS auto_groups (
+    id SERIAL PRIMARY KEY,
+    session_name TEXT NOT NULL,
+    gid BIGINT NOT NULL,
+    UNIQUE(session_name, gid)
+);
+""")
+
+cur.execute("""
+CREATE TABLE IF NOT EXISTS copy_groups (
+    id SERIAL PRIMARY KEY,
+    session_name TEXT NOT NULL,
+    gid BIGINT NOT NULL,
+    UNIQUE(session_name, gid)
+);
+""")
 
 cur.execute("""
 CREATE TABLE IF NOT EXISTS groups (
     id SERIAL PRIMARY KEY,
-    chat_id BIGINT UNIQUE NOT NULL
+    gid BIGINT UNIQUE NOT NULL
 );
 """)
+
 cur.execute("""
 CREATE TABLE IF NOT EXISTS sessions (
     session_name TEXT PRIMARY KEY,
     state JSONB
 );
 """)
+
 conn.commit()
 
 # --- سرور keep_alive برای ریپلیت ---
