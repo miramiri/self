@@ -20,6 +20,16 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     if "pending_catches" not in state:
         state["pending_catches"] = []
 
+    # --- تشخیص خودکار owner_id در اولین بار
+    async def ensure_owner():
+        if "owner_id" not in state or not state["owner_id"]:
+            me = await client.get_me()
+            state["owner_id"] = me.id
+            save_state()
+            print(f"✅ owner_id شناسایی شد: {me.id}")
+
+    client.loop.create_task(ensure_owner())
+
     # --- تغییر سرعت کچ با '.کچ 1.5' و ...
     @client.on(events.NewMessage(pattern=r"\.کچ (\d+(?:\.\d+)?)$"))
     async def set_catch_delay(event):
