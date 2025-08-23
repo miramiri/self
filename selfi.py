@@ -337,7 +337,15 @@ async def setup_client(session_name):
                 print(f"⚠️ خطا در کپی: {e}")
 
     # ---------- ماژول‌ها
-    register_save_group(client, session_name, state, save_state, send_status, conn, SESSIONS)
+    register_save_group(
+    client,
+    session_name,   # اسم سشن جاری
+    state,          # وضعیت فعلی
+    save_state,     # تابع ذخیره وضعیت
+    send_status,    # تابع ارسال وضعیت
+    conn,           # اتصال دیتابیس
+    SESSIONS        # همه سشن‌ها
+)
     register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, conn, session_name)
     register_games(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_menu(client, state, GLOBAL_GROUPS, save_state, send_status)
