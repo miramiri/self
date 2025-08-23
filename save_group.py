@@ -34,7 +34,7 @@ def register_save_group(client, state, GLOBAL_GROUPS, send_status, conn=None, se
             entity = await client.get_entity(arg)
             return entity.id
         except Exception:
-            await event.respond("❌ گروه پیدا نشد.")
+            await event.edit("❌ گروه پیدا نشد.")
             return None
 
     # --- ثبت فقط برای این اکانت ---
@@ -64,10 +64,10 @@ def register_save_group(client, state, GLOBAL_GROUPS, send_status, conn=None, se
                     )
                 conn.commit()
 
-            await event.respond(f"✅ گروه {gid} در حالت سکوت قرار گرفت.")
+            await event.edit(f"✅ گروه {gid} در حالت سکوت قرار گرفت.")
             await send_status()
         else:
-            await event.respond(f"گروه {gid} از قبل ساکته😴.")
+            await event.edit(f"گروه {gid} از قبل ساکته😴.")
 
     # --- ثبت کپی برای همه اکانت‌ها ---
     @client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?:\s+(.+))?$"))
@@ -101,10 +101,10 @@ def register_save_group(client, state, GLOBAL_GROUPS, send_status, conn=None, se
                 if gid not in GLOBAL_GROUPS["copy_groups"]:
                     GLOBAL_GROUPS["copy_groups"].append(gid)
 
-            await event.respond(f"✅ گروه {gid} برای کپی روی همه اکانت‌ها ثبت شد.")
+            await event.edit(f"✅ گروه {gid} برای کپی روی همه اکانت‌ها ثبت شد.")
             await send_status()
         else:
-            await event.respond(f"گروه {gid} از قبل برای کپی ثبت شده بود ✅.")
+            await event.edit(f"گروه {gid} از قبل برای کپی ثبت شده بود ✅.")
 
     # --- حذف گروه ---
     @client.on(events.NewMessage(pattern=r"^\.حذف(?:\s+(.+))?$"))
@@ -130,7 +130,7 @@ def register_save_group(client, state, GLOBAL_GROUPS, send_status, conn=None, se
 
         if removed:
             save_state(session_name, state)
-            await event.respond(f"❎ گروه {gid} از حالت سکوت/کپی در اومد.")
+            await event.edit(f"❎ گروه {gid} از حالت سکوت/کپی در اومد.")
             await send_status()
         else:
-            await event.respond(f"گروه {gid} اصلاً ثبت نشده بود🤨.")
+            await event.edit(f"گروه {gid} اصلاً ثبت نشده بود🤨.")
