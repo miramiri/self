@@ -345,7 +345,7 @@ async def setup_client(session_name):
     register_help1(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sargarmi(client, state, GLOBAL_GROUPS, save_state, send_status)  # سرگرمی ساده
     register_sell(client)
-    register_save_group(client, session_name, state, save_state, send_status, SESSIONS)
+    register_save_group(client, session_name, state, save_state, send_status, conn, SESSIONS)
 
     return client
 
