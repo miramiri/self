@@ -5,33 +5,44 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Callable
 
-
-# ---------------- فایل دیتا ----------------
-def get_data_file(session_name: str) -> str:
+# ---------------- فایل دیتا (فایل JSON به‌عنوان فallback) ----------------
+def get_data_file(session_name: Optional[str]) -> Optional[str]:
+    if not session_name:
+        return None
     return f"data_{session_name}.json"
 
 
-def load_state(session_name: str) -> Dict[str, Any]:
+def load_state(session_name: Optional[str]) -> Dict[str, Any]:
     file = get_data_file(session_name)
-    if os.path.exists(file):
+    if file and os.path.exists(file):
         with open(file, "r", encoding="utf-8") as f:
             return json.load(f)
     return {"owner_id": None, "auto_groups": [], "copy_groups": []}
 
 
-def save_state(session_name: str, state: Dict[str, Any]) -> None:
+def save_state(session_name: Optional[str], state: Dict[str, Any]) -> None:
     file = get_data_file(session_name)
+    if not file:
+        return
     with open(file, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
 
 
 # ---------------- ابزار تبدیل ورودی به chat_id ----------------
 async def _resolve_chat_id(client, event, arg: Optional[str]) -> Optional[int]:
+    """
+    ورودی می‌تواند:
+      - خالی (یعنی همین گروه جاری)
+      - t.me/<username> یا t.me/c/<id>
+      - @username
+      - آیدی عددی (مثبت/منفی) باشد
+    """
     if not arg or not str(arg).strip():
         return event.chat_id
 
     text = str(arg).strip()
 
+    # t.me links
     if "t.me/" in text:
         text = text.split("t.me/", 1)[1].strip().strip("/")
         if text.lower().startswith("c/"):
@@ -39,6 +50,7 @@ async def _resolve_chat_id(client, event, arg: Optional[str]) -> Optional[int]:
             if len(parts) >= 2 and parts[1].isdigit():
                 text = "-100" + parts[1]
 
+    # username
     if text.startswith("@") or any(c.isalpha() for c in text):
         try:
             entity = await client.get_entity(text)
@@ -47,13 +59,16 @@ async def _resolve_chat_id(client, event, arg: Optional[str]) -> Optional[int]:
             await event.edit("❌ گروه با این یوزرنیم پیدا نشد.")
             return None
 
+    # numeric
     try:
         val = int(text)
     except ValueError:
         await event.edit("❌ ورودی نامعتبر. از @username یا آیدی عددی (-100...) استفاده کن.")
         return None
 
+    # اگر منفی/قدیمی بود
     if val <= 0:
+        # تلاش برای پیدا کردن در دیالوگ‌ها
         async for d in client.iter_dialogs():
             if get_peer_id(d.entity) == val:
                 return val
@@ -69,6 +84,7 @@ async def _resolve_chat_id(client, event, arg: Optional[str]) -> Optional[int]:
                 await event.edit("❌ گروه با این آیدی پیدا نشد. مطمئن شو عضو اون گروهی.")
                 return None
 
+    # اگر مثبت بود
     async for d in client.iter_dialogs():
         if getattr(d.entity, "id", None) == val:
             return get_peer_id(d.entity)
@@ -81,6 +97,90 @@ async def _resolve_chat_id(client, event, arg: Optional[str]) -> Optional[int]:
         return None
 
 
+# ---------------- توابع کمکی دیتابیس ----------------
+def create_tables(conn) -> None:
+    """
+    جداول موردنیاز:
+      - auto_groups(session_name TEXT, gid BIGINT)  PK(session_name, gid)
+      - copy_groups(gid BIGINT)                    PK(gid)
+    برای PostgreSQL:
+      BIGINT استفاده شود و ON CONFLICT پشتیبانی می‌شود.
+    """
+    if not conn:
+        return
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS auto_groups (
+                session_name TEXT NOT NULL,
+                gid BIGINT NOT NULL,
+                PRIMARY KEY (session_name, gid)
+            );
+            """
+        )
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS copy_groups (
+                gid BIGINT PRIMARY KEY
+            );
+            """
+        )
+    conn.commit()
+
+
+def db_insert_auto(conn, session_name: str, gid: int) -> None:
+    if not (conn and session_name):
+        return
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO auto_groups (session_name, gid)
+            VALUES (%s, %s)
+            ON CONFLICT (session_name, gid) DO NOTHING;
+            """,
+            (session_name, gid),
+        )
+    conn.commit()
+
+
+def db_insert_copy(conn, gid: int) -> None:
+    if not conn:
+        return
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO copy_groups (gid)
+            VALUES (%s)
+            ON CONFLICT (gid) DO NOTHING;
+            """,
+            (gid,),
+        )
+    conn.commit()
+
+
+def db_delete_auto(conn, session_name: Optional[str], gid: int) -> int:
+    if not (conn and session_name):
+        return 0
+    with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM auto_groups WHERE session_name=%s AND gid=%s;",
+            (session_name, gid),
+        )
+        deleted = cur.rowcount
+    conn.commit()
+    return deleted
+
+
+def db_delete_copy(conn, gid: int) -> int:
+    if not conn:
+        return 0
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM copy_groups WHERE gid=%s;", (gid,))
+        deleted = cur.rowcount
+    conn.commit()
+    return deleted
+
+
 # ---------------- ثبت / حذف ----------------
 def register_save_group(
     client,
@@ -90,41 +190,42 @@ def register_save_group(
     conn: Optional[Any] = None,
     session_name: Optional[str] = None,
 ):
+    """
+    state نمونه:
+      { "owner_id": 123, "auto_groups": [..], "copy_groups": [..] }
+    GLOBAL_GROUPS: دیکشنری مشترک بین اکانت‌ها مثل {"copy_groups": [..]}
+    conn: اتصال دیتابیس (مثلاً psycopg2)
+    """
+    # اطمینان از وجود کلیدها
+    state.setdefault("auto_groups", [])
+    state.setdefault("copy_groups", [])
+    if isinstance(GLOBAL_GROUPS, dict):
+        GLOBAL_GROUPS.setdefault("copy_groups", [])
+
     def is_owner(e) -> bool:
         return e.sender_id == state.get("owner_id")
 
-    # --- ثبت فقط برای این اکانت (فقط داخل گروه) ---
+    # --- ثبت فقط برای این اکانت (در همان گروه جاری) ---
     @client.on(events.NewMessage(pattern=r"^\.ثبت$"))
     async def register_group_here(event):
         if not is_owner(event):
             return
         if not event.is_group:
-            await event.edit("[خو جقی دستور تو گروه بزن.")
+            await event.edit("این دستور فقط داخل گروه کار می‌کند.")
             return
 
         gid = event.chat_id
         if gid not in state["auto_groups"]:
             state["auto_groups"].append(gid)
-            save_state(session_name, state)  # type: ignore[arg-type]
-
-            if conn and session_name:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        """
-                        INSERT INTO auto_groups (session_name, gid)
-                        VALUES (%s, %s)
-                        ON CONFLICT (session_name, gid) DO NOTHING;
-                        """,
-                        (session_name, gid),
-                    )
-                conn.commit()
+            save_state(session_name, state)
+            db_insert_auto(conn, session_name or "", gid)
 
             await event.edit(f"✅ گروه {gid} در حالت سکوت قرار گرفت.")
             await send_status()
         else:
-            await event.edit(f"گروه {gid} از قبل ساکته😴.")
+            await event.edit(f"ℹ️ گروه {gid} از قبل ثبت شده بود.")
 
-    # --- ثبت با یوزرنیم یا آیدی ---
+    # --- ثبت با یوزرنیم یا آیدی برای این اکانت ---
     @client.on(events.NewMessage(pattern=r"^\.ثبت یوزر(?:\s+(.+))$"))
     async def register_group_by_username(event):
         if not is_owner(event):
@@ -137,69 +238,46 @@ def register_save_group(
 
         if gid not in state["auto_groups"]:
             state["auto_groups"].append(gid)
-            save_state(session_name, state)  # type: ignore[arg-type]
+            save_state(session_name, state)
+            db_insert_auto(conn, session_name or "", gid)
 
-            if conn and session_name:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        """
-                        INSERT INTO auto_groups (session_name, gid)
-                        VALUES (%s, %s)
-                        ON CONFLICT (session_name, gid) DO NOTHING;
-                        """,
-                        (session_name, gid),
-                    )
-                conn.commit()
-
-            await event.edit(f"✅ گروه {gid} در حالت سکوت قرار گرفت (ثبت با یوزر).")
+            await event.edit(f"✅ گروه {gid} در حالت سکوت قرار گرفت (ثبت با یوزر/آیدی).")
             await send_status()
         else:
-            await event.edit(f"گروه {gid} از قبل ساکته😴.")
+            await event.edit(f"ℹ️ گروه {gid} از قبل ثبت شده بود.")
 
-    # --- ثبت کپی برای همه اکانت‌ها ---
+    # --- ثبت کپی برای همه اکانت‌ها (گروه جاری) ---
     @client.on(events.NewMessage(pattern=r"^\.ثبت کپی$"))
     async def register_copy_group(event):
-        if not is_owner(event): return
-        if not event.is_group:
-            await event.edit("خو جقی برو تو گروه بزن🤦🏻‍♂️.")
+        if not is_owner(event):
             return
-        
+        if not event.is_group:
+            await event.edit("این دستور را داخل گروه بزن جقی.")
+            return
+
         gid = event.chat_id
-        if gid not in groups:
-            groups.append(gid)
-            save_state()
-            await event.edit("کی دست کرد تو شورت معلم❤️‍🔥🦦")
-            await send_status()
-        else:
-            await event.edit("خو ی بار دست کردی تو شورت معلم بسه دیگه چیو دقیقا میخوای؟🤦🏻‍♂️.")
 
-        # ذخیره نام گروه برای این کاربر
-        GLOBAL_GROUPS[user_id] = group_name
-        save_state()
-        await event.reply(f"✅ گروه {group_name} برای کپی ثبت شد.")
+        changed = False
+        # در state محلی
+        if gid not in state["copy_groups"]:
+            state["copy_groups"].append(gid)
+            changed = True
 
-        # 🔹 ثبت گروه در لیست کلی برای همه اکانت‌ها
+        # در GLOBAL_GROUPS مشترک
         if isinstance(GLOBAL_GROUPS, dict):
-            GLOBAL_GROUPS.setdefault("copy_groups", [])
             if gid not in GLOBAL_GROUPS["copy_groups"]:
                 GLOBAL_GROUPS["copy_groups"].append(gid)
-                await event.edit(f"✅ گروه {gid} برای کپی روی همه اکانت‌ها ثبت شد.")
-                if send_status:
-                    await send_status()
-            else:
-                await event.edit(f"ℹ️ این گروه {gid} از قبل برای کپی ثبت شده بود.")
-    # 🔹 ثبت گروه در لیست کلی برای همه اکانت‌ها
-    if isinstance(GLOBAL_GROUPS, dict):
-        GLOBAL_GROUPS.setdefault("copy_groups", [])
-        if gid not in GLOBAL_GROUPS["copy_groups"]:
-            GLOBAL_GROUPS["copy_groups"].append(gid)
-            await event.edit(f"✅ گروه {gid} برای کپی روی همه اکانت‌ها ثبت شد.")
-            if send_status:
-                await send_status()
-        else:
-            await event.edit(f"ℹ️ این گروه {gid} از قبل برای کپی ثبت شده بود.")
+                changed = True
 
-    # --- حذف گروه ---
+        if changed:
+            save_state(session_name, state)
+            db_insert_copy(conn, gid)
+            await event.edit(f"✅ گروه {gid} برای کپی روی همه اکانت‌ها ثبت شد.")
+            await send_status()
+        else:
+            await event.edit(f"ℹ️ گروه {gid} از قبل در لیست کپی بود.")
+
+    # --- حذف گروه (از سکوت/کپی)؛ ورودی اختیاری یوزرنیم/آیدی ---
     @client.on(events.NewMessage(pattern=r"^\.حذف(?:\s+(.+))?$"))
     async def unregister_group(event):
         if not is_owner(event):
@@ -213,17 +291,22 @@ def register_save_group(
         removed = False
         if gid in state["auto_groups"]:
             state["auto_groups"].remove(gid)
+            db_delete_auto(conn, session_name, gid)
             removed = True
+
         if gid in state["copy_groups"]:
             state["copy_groups"].remove(gid)
             removed = True
-        if GLOBAL_GROUPS and "copy_groups" in GLOBAL_GROUPS and gid in GLOBAL_GROUPS["copy_groups"]:
+
+        if isinstance(GLOBAL_GROUPS, dict) and gid in GLOBAL_GROUPS["copy_groups"]:
             GLOBAL_GROUPS["copy_groups"].remove(gid)
             removed = True
 
+        # از دیتابیس copy_groups نیز حذف شود (در صورت تمایل می‌توان شرط گذاشت)
         if removed:
-            save_state(session_name, state)  # type: ignore[arg-type]
-            await event.edit(f"❎ گروه {gid} از حالت سکوت/کپی در اومد.")
+            db_delete_copy(conn, gid)
+            save_state(session_name, state)
+            await event.edit(f"❎ گروه {gid} از حالت سکوت/کپی خارج شد.")
             await send_status()
         else:
-            await event.edit(f"گروه {gid} اصلاً ثبت نشده بود🤨.")
+            await event.edit(f"ℹ️ گروه {gid} اصلاً ثبت نشده بود.")
