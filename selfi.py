@@ -62,6 +62,14 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 conn.commit()
 
+cur.execute("""
+CREATE TABLE IF NOT EXISTS groups (
+    id SERIAL PRIMARY KEY,
+    chat_id BIGINT UNIQUE
+);
+""")
+conn.commit()
+
 # --- سرور keep_alive برای ریپلیت ---
 app = Flask('')
 
