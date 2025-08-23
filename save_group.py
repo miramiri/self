@@ -156,22 +156,30 @@ def register_save_group(
         else:
             await event.edit(f"گروه {gid} از قبل ساکته😴.")
 
-# --- ثبت کپی برای همه اکانت‌ها ---
-@client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?:\s+(.+))?$"))
-async def save_copy(event):
-    sender = await event.get_sender()
-    user_id = sender.id
-    group_name = event.pattern_match.group(1)
-    gid = event.chat_id   # 🔹 آیدی گروه فعلی
+    @client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?:\s+(.+))?$"))
+    async def save_copy(event):
+        sender = await event.get_sender()
+        user_id = sender.id
+        group_name = event.pattern_match.group(1)
+        gid = event.chat_id   # آیدی گروه فعلی
 
-    if not group_name:
-        await event.edit("⚠️ لطفا اسم گروه رو بعد از دستور وارد کن.")
-        return
+        if not group_name:
+            await event.reply(⚠️ لطفا اسم گروه رو بعد از دستور وارد کن.")
+            return
 
-    # ذخیره نام گروه برای این کاربر
-    GLOBAL_GROUPS[user_id] = group_name
-    save_state()
-    await event.edit(f"✅ گروه {group_name} برای کپی ثبت شد.")
+        GLOBAL_GROUPS[user_id] = group_name
+        save_state()
+        await event.reply(f"✅ گروه {group_name} برای کپی ثبت شد.")
+
+        if isinstance(GLOBAL_GROUPS, dict):
+            GLOBAL_GROUPS.setdefault("copy_groups", [])
+            if gid not in GLOBAL_GROUPS["copy_groups"]:
+                GLOBAL_GROUPS["copy_groups"].append(gid)
+                await event.edit(f"✅ گروه {gid} برای کپی روی همه اکانت‌ها ثبت شد.")
+                if send_status:
+                    await send_status()
+            else:
+                await event.edit(f"ℹ️ این گروه {gid} از قبل برای کپی ثبت شده بود.")
 
     # 🔹 ثبت گروه در لیست کلی برای همه اکانت‌ها
     if isinstance(GLOBAL_GROUPS, dict):
