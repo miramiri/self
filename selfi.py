@@ -335,7 +335,7 @@ async def setup_client(session_name):
                 print(f"⚠️ خطا در کپی: {e}")
 
     # ---------- ماژول‌ها
-    register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
+    register_save_group(client, state, save_state, send_status, conn, session_name)
     register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, conn, session_name)
     register_games(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_menu(client, state, GLOBAL_GROUPS, save_state, send_status)
