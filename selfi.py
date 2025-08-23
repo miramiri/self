@@ -4,6 +4,7 @@ import os
 from telethon import TelegramClient, events, Button
 from flask import Flask
 from threading import Thread
+import psycopg2
 
 from autocatch import register_autocatch
 from selfi2 import register_extra_cmds   # دستورات جدا (لیست/آیدی/بلاک/تاریخ/تنظیم)
@@ -16,6 +17,8 @@ from help1 import register_help1
 from sargarmi import register_sargarmi
 from sell import register_sell
 from save_group import register_save_group
+import sqlite3
+conn = sqlite3.connect("data.db", check_same_thread=False)
 
 # --- سرور keep_alive برای ریپلیت ---
 app = Flask('')
@@ -30,6 +33,43 @@ def run():
 def keep_alive():
     t = Thread(target=run)
     t.start()
+
+# --- اتصال به دیتابیس Railway ---
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# اگر ست نشده باشه، fallback استفاده می‌کنیم
+if not DATABASE_URL:
+    DATABASE_URL = "postgresql://postgres:TVaGgVZImnyBCvQOkFXPDrfVEpbWkFjT@yamanote.proxy.rlwy.net:50561/railway"
+
+conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+conn.autocommit = True
+
+# ایجاد جدول‌ها
+with conn.cursor() as cur:
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS groups (
+        id SERIAL PRIMARY KEY,
+        session_name TEXT NOT NULL,
+        gid BIGINT NOT NULL,
+        UNIQUE (session_name, gid)
+    );
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS copy_groups (
+        id SERIAL PRIMARY KEY,
+        session_name TEXT NOT NULL,
+        gid BIGINT NOT NULL,
+        UNIQUE (session_name, gid)
+    );
+    """)
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS auto_groups (
+        id SERIAL PRIMARY KEY,
+        session_name TEXT NOT NULL,
+        gid BIGINT NOT NULL,
+        UNIQUE (session_name, gid)
+    );
+    """)
 
 # --- خواندن API_ID و API_HASH ---
 with open("confing.json", "r", encoding="utf-8") as f:
@@ -297,7 +337,7 @@ async def setup_client(session_name):
                 print(f"⚠️ خطا در کپی: {e}")
 
     # ---------- ماژول‌ها
-    register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
+    register_save_group(client, session_name, state, save_state, send_status, conn, SESSIONS)
     register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, conn, session_name)
     register_games(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_menu(client, state, GLOBAL_GROUPS, save_state, send_status)
