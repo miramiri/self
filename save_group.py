@@ -12,14 +12,6 @@ def get_data_file(session_name: str) -> str:
 
 
 def load_state(session_name: str) -> Dict[str, Any]:
-    """
-    ساختار استیت:
-    {
-        "owner_id": int | None,
-        "auto_groups": List[int],
-        "copy_groups": List[int]
-    }
-    """
     file = get_data_file(session_name)
     if os.path.exists(file):
         with open(file, "r", encoding="utf-8") as f:
@@ -35,16 +27,11 @@ def save_state(session_name: str, state: Dict[str, Any]) -> None:
 
 # ---------------- ابزار تبدیل ورودی به chat_id ----------------
 async def _resolve_chat_id(client, event, arg: Optional[str]) -> Optional[int]:
-    """
-    ورودی می‌تواند خالی، یوزرنیم (@group) یا آیدی عددی (مثل -100123...) باشد.
-    خروجی: chat_id سازگار با تلگرام (برای کانال/سوپرگروه: -100...)
-    """
     if not arg or not str(arg).strip():
         return event.chat_id
 
     text = str(arg).strip()
 
-    # اگر لینک t.me دادند، قسمت آخر را بردار
     if "t.me/" in text:
         text = text.split("t.me/", 1)[1].strip().strip("/")
         if text.lower().startswith("c/"):
@@ -52,7 +39,6 @@ async def _resolve_chat_id(client, event, arg: Optional[str]) -> Optional[int]:
             if len(parts) >= 2 and parts[1].isdigit():
                 text = "-100" + parts[1]
 
-    # اگر یوزرنیم یا حروف داشت → resolve کن
     if text.startswith("@") or any(c.isalpha() for c in text):
         try:
             entity = await client.get_entity(text)
@@ -61,7 +47,6 @@ async def _resolve_chat_id(client, event, arg: Optional[str]) -> Optional[int]:
             await event.edit("❌ گروه با این یوزرنیم پیدا نشد.")
             return None
 
-    # اگر عدد بود
     try:
         val = int(text)
     except ValueError:
@@ -108,9 +93,40 @@ def register_save_group(
     def is_owner(e) -> bool:
         return e.sender_id == state.get("owner_id")
 
-    # --- ثبت فقط برای این اکانت ---
-    @client.on(events.NewMessage(pattern=r"^\.ثبت(?:\s+(.+))?$"))
-    async def register_group(event):
+    # --- ثبت فقط برای این اکانت (فقط داخل گروه) ---
+    @client.on(events.NewMessage(pattern=r"^\.ثبت$"))
+    async def register_group_here(event):
+        if not is_owner(event):
+            return
+        if not event.is_group:
+            await event.edit("❌ فقط داخل گروه میشه این دستور رو زد.")
+            return
+
+        gid = event.chat_id
+        if gid not in state["auto_groups"]:
+            state["auto_groups"].append(gid)
+            save_state(session_name, state)  # type: ignore[arg-type]
+
+            if conn and session_name:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO auto_groups (session_name, gid)
+                        VALUES (%s, %s)
+                        ON CONFLICT (session_name, gid) DO NOTHING;
+                        """,
+                        (session_name, gid),
+                    )
+                conn.commit()
+
+            await event.edit(f"✅ گروه {gid} در حالت سکوت قرار گرفت.")
+            await send_status()
+        else:
+            await event.edit(f"گروه {gid} از قبل ساکته😴.")
+
+    # --- ثبت با یوزرنیم یا آیدی ---
+    @client.on(events.NewMessage(pattern=r"^\.ثبت یوزر(?:\s+(.+))$"))
+    async def register_group_by_username(event):
         if not is_owner(event):
             return
 
@@ -135,7 +151,7 @@ def register_save_group(
                     )
                 conn.commit()
 
-            await event.edit(f"✅ گروه {gid} در حالت سکوت قرار گرفت.")
+            await event.edit(f"✅ گروه {gid} در حالت سکوت قرار گرفت (ثبت با یوزر).")
             await send_status()
         else:
             await event.edit(f"گروه {gid} از قبل ساکته😴.")
