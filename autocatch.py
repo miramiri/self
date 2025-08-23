@@ -76,4 +76,3 @@ break
 # --- پردازش پاسخ از @collect_waifu_cheats_bot
 @client.on(events.NewMessage(from_users=["collect_waifu_cheats_bot"]))
 async def handle_collect(event):
-gid = event.chat_id
