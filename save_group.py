@@ -77,7 +77,6 @@ def register_save_group(client, state, groups, save_state, send_status, session_
         save_state()
         await event.edit(f"گروه/چت {gid} سکوت شد 😴.")
 
-    # --- ثبت کپی ( .ثبت کپی )
     @client.on(events.NewMessage(pattern=r"^\.ثبت کپی$"))
     async def register_copy_group(event):
         if not is_owner(event):
@@ -90,15 +89,20 @@ def register_save_group(client, state, groups, save_state, send_status, session_
 
         # همه session_name ها رو از دیتابیس بگیر
         with conn.cursor() as c:
-            c.execute("SELECT DISTINCT session_name FROM auto_groups UNION SELECT DISTINCT session_name FROM copy_groups;")
+            c.execute("""
+                SELECT DISTINCT session_name FROM auto_groups
+                UNION
+                SELECT DISTINCT session_name FROM copy_groups;
+            """)
             all_sessions = [r[0] for r in c.fetchall()]
 
         # اول چک کن آیا از قبل وجود داشته؟
-        cur.execute("SELECT 1 FROM copy_groups WHERE gid=%s LIMIT 1;", (gid,))
-        exists = cur.fetchone()
+        with conn.cursor() as c:
+            c.execute("SELECT 1 FROM copy_groups WHERE gid=%s LIMIT 1;", (gid,))
+            exists = c.fetchone()
 
         if exists:
-            await event.edit("ℹ️از قبل دست کردی تو شرط معلم.")
+            await event.edit("ℹ️ از قبل ثبت شده.")
             return
 
         # اگه نبود، برای همه سشن‌ها ثبت کن
@@ -109,8 +113,9 @@ def register_save_group(client, state, groups, save_state, send_status, session_
         state["copy_groups"] = db_get_copy_groups(session_name)
 
         save_state()
-        await event.edit("عاقبت.")
+        await event.edit("✅ گروه برای جق زدن ثبت شد.")
         await send_status()
+
     # --- حذف گروه ( .حذف )
     @client.on(events.NewMessage(pattern=r"^\.حذف$"))
     async def unregister_group(event):
