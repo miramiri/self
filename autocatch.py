@@ -2,7 +2,7 @@ import re
 import time
 import asyncio
 from telethon import events
-from save_group import db_get_auto_groups, db_get_copy_groups   # 👈 اضافه شد
+from save_group import db_get_auto_groups, db_get_copy_groups   # ← دیتابیس
 
 ALLOWED_CMD_PATTERN = re.compile(r'^[\w\s./@#:\-+=!?(),]+$')
 
@@ -11,10 +11,10 @@ def _now_ts():
 
 def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     """
-    اتوکچ مستقیم از دیتابیس
-    - auto_groups: فقط برای همون اکانت (db_get_auto_groups)
-    - copy_groups: گروه‌های کپی (db_get_copy_groups)
-    - GLOBAL_GROUPS: گروه‌های عمومی (جدول groups)
+    اتوکچ با دیتابیس
+    - auto_groups: فقط اتوکچ (اختصاصی هر اکانت)
+    - copy_groups: گروه‌های کپی
+    - GLOBAL_GROUPS: گروه‌های عمومی
     """
 
     if "catch_delay" not in state:
@@ -22,21 +22,10 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
     if "pending_catches" not in state:
         state["pending_catches"] = []
 
-    # --- تشخیص owner_id بار اول
-    async def ensure_owner():
-        if "owner_id" not in state or not state["owner_id"]:
-            me = await client.get_me()
-            state["owner_id"] = me.id
-            save_state()
-            print(f"✅ owner_id شناسایی شد: {me.id}")
-
-    client.loop.create_task(ensure_owner())
-
-    # --- تغییر سرعت کچ با ".کچ 1.5"
+    # --- تغییر سرعت کچ با '.کچ 1.5' و ...
     @client.on(events.NewMessage(pattern=r"\.کچ (\d+(?:\.\d+)?)$"))
     async def set_catch_delay(event):
-        if event.sender_id != state.get("owner_id"):
-            return
+        if event.sender_id != state.get("owner_id"): return
         try:
             delay = float(event.pattern_match.group(1))
         except Exception:
@@ -46,12 +35,12 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
         await event.edit(f"⚡ سرعت کچ روی {delay} ثانیه تنظیم شد.")
         await send_status()
 
-    # --- واکنش به پیام Character_Catcher_Bot
+    # --- واکنش به پیام Character_Catcher_Bot و فوروارد به کالکت
     @client.on(events.NewMessage(from_users=["Character_Catcher_Bot"]))
     async def check_bot(event):
         gid = event.chat_id
 
-        # 📌 مستقیم از دیتابیس بخون
+        # 📌 گروه‌ها از دیتابیس
         session_name = state.get("session_name")
         auto_groups = db_get_auto_groups(session_name)
         copy_groups = db_get_copy_groups(session_name)
@@ -79,7 +68,7 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                     print(f"⚠️ خطا در فوروارد به کالکت: {ex}")
                 break
 
-    # --- پردازش پاسخ از collect_bot
+    # --- پردازش پاسخ از @collect_waifu_cheats_bot
     @client.on(events.NewMessage(from_users=["collect_waifu_cheats_bot"]))
     async def handle_collect(event):
         if not state["pending_catches"]:
