@@ -119,18 +119,41 @@ def register_save_group(client, state, groups, save_state, send_status, session_
     # --- حذف گروه ( .حذف )
     @client.on(events.NewMessage(pattern=r"^\.حذف$"))
     async def unregister_group(event):
-        if not is_owner(event): return
-        if not event.is_group:
-            await event.edit("تو پیوی نزن خو جقی🤦🏻‍♂️.")
+        if not is_owner(event):
             return
-        
-        gid = event.chat_id
-        db_remove_group(session_name, gid)
+        if not event.is_group:
+            await event.edit("❌جقی فقط داخل گروه بزن، تو پیوی کار نمی‌کنه.")
+            return
 
-        # ✅ دوباره sync
+        gid = event.chat_id
+
+        # چک کن توی auto_groups هست یا نه
+        with conn.cursor() as c:
+            c.execute("SELECT 1 FROM auto_groups WHERE session_name=%s AND gid=%s;", (session_name, gid))
+            in_auto = c.fetchone()
+
+        # چک کن توی copy_groups هست یا نه
+        with conn.cursor() as c:
+            c.execute("SELECT 1 FROM copy_groups WHERE session_name=%s AND gid=%s;", (session_name, gid))
+            in_copy = c.fetchone()
+
+        if in_auto:
+            with conn.cursor() as c:
+                c.execute("DELETE FROM auto_groups WHERE session_name=%s AND gid=%s;", (session_name, gid))
+            conn.commit()
+            msg = "❌ گروه از حالت سکوت حذف شد."
+        elif in_copy:
+            with conn.cursor() as c:
+                c.execute("DELETE FROM copy_groups WHERE session_name=%s AND gid=%s;", (session_name, gid))
+            conn.commit()
+            msg = "❌ دستت از شرط معلم در آوردی."
+        else:
+            msg = " این گروه از قبل ساکت کرده بودی جقی."
+
+        # ✅ sync دوباره
         state["auto_groups"] = db_get_auto_groups(session_name)
         state["copy_groups"] = db_get_copy_groups(session_name)
 
         save_state()
-        await event.edit("گروه از حالت سکوت در اومد 🦦.")
+        await event.edit(msg)
         await send_status()
