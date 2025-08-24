@@ -360,7 +360,7 @@ async def setup_client(session_name):
     register_sargarmi(client, state, GLOBAL_GROUPS, save_state, send_status)  # سرگرمی ساده
     register_sell(client)
     register_save_group(client, state, GLOBAL_GROUPS, save_state, send_status, session_name)
-
+      register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, conn, session_name)
 
     return client
 
@@ -369,10 +369,10 @@ async def setup_client(session_name):
 async def main():
     clients = await asyncio.gather(*[setup_client(s) for s in SESSIONS])
     print(f"🚀 {len(clients)} کلاینت ران شد.")
-    await asyncio.gather(*[c.run_until_disconnected() for c in clients])
+    # 👇 به جای run_until_disconnected مستقیم
+    await asyncio.gather(*[asyncio.create_task(c.run_until_disconnected()) for c in clients])
 
 
 if __name__ == "__main__":
-    keep_alive()   # 🔥 اضافه شد برای روشن موندن توی Replit
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    keep_alive()   # روشن نگه داشتن Railway/Replit
+    asyncio.run(main())   # 👈 جایگزین get_event_loop
