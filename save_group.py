@@ -77,7 +77,7 @@ def register_save_group(client, state, groups, save_state, send_status, session_
         save_state()
         await event.edit(f"گروه/چت {gid} ثبت شد 😴.")
 
-    # --- ثبت کپی ( .ثبت کپی )
+       # --- ثبت کپی ( .ثبت کپی )
     @client.on(events.NewMessage(pattern=r"^\.ثبت کپی$"))
     async def register_copy_group(event):
         if not is_owner(event): return
@@ -86,9 +86,17 @@ def register_save_group(client, state, groups, save_state, send_status, session_
             return
         
         gid = event.chat_id
-        db_add_copy_group(session_name, gid)
 
-        # ✅ دوباره sync
+        # همه session_name ها رو از دیتابیس بگیر
+        with conn.cursor() as c:
+            c.execute("SELECT DISTINCT session_name FROM auto_groups UNION SELECT DISTINCT session_name FROM copy_groups;")
+            all_sessions = [r[0] for r in c.fetchall()]
+
+        # برای همه session_name ها ثبت کن
+        for s_name in all_sessions:
+            db_add_copy_group(s_name, gid)
+
+        # فقط برای اکانت فعلی sync بشه
         state["copy_groups"] = db_get_copy_groups(session_name)
 
         save_state()
