@@ -6,7 +6,15 @@ from telethon import events
 from telethon.tl.functions.contacts import BlockRequest
 from telethon.tl.functions.messages import SendReactionRequest
 from telethon.tl.types import ReactionEmoji
+import os, psycopg2
 
+# --- اتصال به دیتابیس ---
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL")
+if not DATABASE_URL:
+    raise ValueError("❌ DATABASE_URL/DATABASE_PUBLIC_URL is not set")
+
+# Railway نیاز به sslmode=require داره
+conn = psycopg2.connect(DATABASE_URL, sslmode="require")
 # --- توابع دیتابیس ---
 def db_get_groups(conn, session_name):
     with conn.cursor() as cur:
