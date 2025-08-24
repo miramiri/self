@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import asyncio
 import json
 import os
@@ -7,9 +8,9 @@ from threading import Thread
 import psycopg2
 from psycopg2.extras import Json
 
+# --- ماژول‌ها ---
 from autocatch import register_autocatch
 from selfi2 import register_extra_cmds   # دستورات جدا (لیست/آیدی/بلاک/تاریخ/تنظیم)
-
 from games import register_games
 from menu import register_menu
 from sargarmi_plus import register_sargarmi_plus
@@ -17,21 +18,18 @@ from security import register_security
 from help1 import register_help1
 from sargarmi import register_sargarmi
 from sell import register_sell
-from save_group import register_save_group
-# -*- coding: utf-8 -*-
-import os
-import psycopg2
+from save_group import register_save_group   # ← وصله‌ی دیتابیسی ثبت/حذف گروه
 
-# --- اتصال به دیتابیس PostgreSQL از Railway ---
-DATABASE_URL = os.getenv("DATABASE_URL")
+# --- اتصال به دیتابیس PostgreSQL ---
+DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL")
 if not DATABASE_URL:
-    raise ValueError("❌ DATABASE_URL is not set in Railway Variables")
+    raise ValueError("❌ DATABASE_URL/DATABASE_PUBLIC_URL is not set")
 
 try:
     conn = psycopg2.connect(DATABASE_URL, sslmode="require")
     cur = conn.cursor()
 
-    # --- ساخت جدول‌ها در صورت نبودن ---
+    # --- ساخت جدول‌ها (در صورت نبودن) ---
     cur.execute("""
     CREATE TABLE IF NOT EXISTS auto_groups (
         id SERIAL PRIMARY KEY,
@@ -65,12 +63,12 @@ try:
     """)
 
     conn.commit()
-    print("✅ همه جدول‌ها ساخته شدند و اتصال Railway درست است.")
-
+    print("✅ دیتابیس آماده است.")
 except Exception as e:
-    print("❌ خطا در اتصال به دیتابیس:", e)
+    print("❌ خطا در اتصال/تهیه‌ی دیتابیس:", e)
+    raise
 
-# --- سرور keep_alive برای ریپلیت ---
+# --- سرور keep_alive برای ریپلیت/ریل‌وی ---
 app = Flask('')
 
 @app.route('/')
@@ -95,18 +93,18 @@ SESSIONS = [
     "acc5", "acc7"
 ]
 
-# --- مدیریت گروه‌ها ---
+# --- گروه‌های عمومی (جدول groups) ---
 def load_groups():
     cur.execute("SELECT chat_id FROM groups;")
     return [row[0] for row in cur.fetchall()]
 
-def save_group(chat_id):
+def save_group_db(chat_id):
     cur.execute("INSERT INTO groups (chat_id) VALUES (%s) ON CONFLICT DO NOTHING;", (chat_id,))
     conn.commit()
 
 GLOBAL_GROUPS = load_groups()
 
-# --- مدیریت state ---
+# --- state پیش‌فرض ---
 def default_state():
     return {
         "owner_id": None,
@@ -119,7 +117,8 @@ def default_state():
         "funny_text": "نیما فشاری 😂",
         "status_msg_id": None,
         "auto_groups": [],
-        "copy_plus_user": None
+        "copy_plus_user": None,
+        "copy_groups": []
     }
 
 def load_state(session_name):
@@ -127,8 +126,28 @@ def load_state(session_name):
     row = cur.fetchone()
     return row[0] if row else default_state()
 
+def db_get_auto_groups(session_name):
+    cur.execute("SELECT gid FROM auto_groups WHERE session_name=%s;", (session_name,))
+    return [r[0] for r in cur.fetchall()]
+
+def db_get_copy_groups_for_all():
+    # همه‌ی گروه‌های کپی در همه‌ی سشن‌ها (الگوی نسخه ۱)
+    cur.execute("SELECT gid FROM copy_groups;")
+    return [r[0] for r in cur.fetchall()]
+
+def db_get_copy_groups_for_session(session_name):
+    cur.execute("SELECT gid FROM copy_groups WHERE session_name=%s;", (session_name,))
+    return [r[0] for r in cur.fetchall()]
+
 async def setup_client(session_name):
     state = load_state(session_name)
+
+    # همگام‌سازی مقداردهی اولیه از دیتابیس
+    try:
+        state["auto_groups"] = db_get_auto_groups(session_name)
+        state["copy_groups"] = db_get_copy_groups_for_session(session_name)
+    except Exception as e:
+        print(f"⚠️ [{session_name}] خطا در sync اولیه‌ی گروه‌ها:", e)
 
     def save_state():
         cur.execute("""
@@ -149,7 +168,7 @@ async def setup_client(session_name):
     else:
         print(f"✅ [{session_name}] Started")
 
-    def is_owner(e): 
+    def is_owner(e):
         return e.sender_id == state["owner_id"]
 
     # ---------- متن منو وضعیت
@@ -198,7 +217,7 @@ async def setup_client(session_name):
             state["status_msg_id"] = sent.id
             save_state()
         except Exception as e:
-            print(f"⚠️ خطا در ارسال وضعیت: {e}")
+            print(f"⚠️ [{session_name}] خطا در ارسال وضعیت: {e}")
 
     await send_status()
 
@@ -216,11 +235,11 @@ async def setup_client(session_name):
         await send_status()
 
     # ---------- کپی / کپی خاموش
-    @client.on(events.NewMessage(pattern=r".کپی$"))
+    @client.on(events.NewMessage(pattern=r"^\.کپی$"))
     async def enable_copy(event):
         if not is_owner(event): return
         if not event.is_reply:
-            await event.edit("❌ روی پیام ریپلای کن!")
+            await event.reply("❌ روی پیام ریپلای کن!")
             return
         reply = await event.get_reply_message()
         user = await reply.get_sender()
@@ -229,40 +248,40 @@ async def setup_client(session_name):
             state["last_user"] = user.id
             state["last_group"] = event.chat_id
             save_state()
-            await event.edit(f"✅ کپی برای {user.first_name} فعال شد.")
+            await event.reply(f"✅ کپی برای {getattr(user, 'first_name', 'کاربر')} فعال شد.")
         else:
-            await event.edit("ℹ️ قبلاً فعال بود.")
+            await event.reply("ℹ️ قبلاً فعال بود.")
         await send_status()
 
-    @client.on(events.NewMessage(pattern=r".کپی خاموش$"))
+    @client.on(events.NewMessage(pattern=r"^\.کپی خاموش$"))
     async def disable_copy(event):
         if not is_owner(event): return
         if not event.is_reply:
-            await event.edit("❌ روی پیام ریپلای کن!")
+            await event.reply("❌ روی پیام ریپلای کن!")
             return
         reply = await event.get_reply_message()
         user = await reply.get_sender()
         if user.id in state["echo_users"]:
             state["echo_users"].remove(user.id)
             save_state()
-            await event.edit(f"⛔ کپی برای {user.first_name} خاموش شد.")
+            await event.reply(f"⛔ کپی برای {getattr(user, 'first_name', 'کاربر')} خاموش شد.")
         else:
-            await event.edit("ℹ️ این کاربر فعال نبود.")
+            await event.reply("ℹ️ این کاربر فعال نبود.")
         await send_status()
 
     # ---------- کپی پلاس
-    @client.on(events.NewMessage(pattern=r".کپی پلاس$"))
+    @client.on(events.NewMessage(pattern=r"^\.کپی پلاس$"))
     async def copy_plus(event):
         if not is_owner(event): return
         if not event.is_reply:
-            await event.edit("❌ روی پیام ریپلای کن!")
+            await event.reply("❌ روی پیام ریپلای کن!")
             return
         reply = await event.get_reply_message()
         user = await reply.get_sender()
         state["copy_plus_user"] = user.id
         save_state()
-        await event.edit(
-            f"✨ کپی پلاس فعال شد برای {user.first_name}\n"
+        await event.reply(
+            f"✨ کپی پلاس فعال شد برای {getattr(user, 'first_name', 'کاربر')}\n"
             f"هر وقت اتوکچ قطع شد، دوباره براش فعال میشه.",
             buttons=[[Button.inline("❌ حذف کپی پلاس", b"del_copy_plus")]]
         )
@@ -277,9 +296,10 @@ async def setup_client(session_name):
         await send_status()
 
     # ---------- ریست دیتا
-    @client.on(events.NewMessage(pattern=r".ریست دیتا$"))
+    @client.on(events.NewMessage(pattern=r"^\.ریست دیتا$"))
     async def reset_data(event):
         if not is_owner(event): return
+        status_msg_id_keep = state.get("status_msg_id")
         state.clear()
         state.update({
             "owner_id": event.sender_id,
@@ -290,31 +310,32 @@ async def setup_client(session_name):
             "last_user": None,
             "last_group": None,
             "funny_text": "مگه نیما فشاری 😂",
-            "status_msg_id": state.get("status_msg_id"),
-            "auto_groups": [],
-            "copy_plus_user": None
+            "status_msg_id": status_msg_id_keep,
+            "auto_groups": db_get_auto_groups(session_name),
+            "copy_plus_user": None,
+            "copy_groups": db_get_copy_groups_for_session(session_name)
         })
         save_state()
-        await event.edit("♻️ فایل دیتا ریست شد.")
+        await event.reply("♻️ فایل دیتا ریست شد.")
         await send_status()
 
     # ---------- دستور .ست
-    @client.on(events.NewMessage(pattern=r".ست حذف همه$"))
+    @client.on(events.NewMessage(pattern=r"^\.ست حذف همه$"))
     async def clear_stop_emoji(event):
         if not is_owner(event): return
         state["stop_emoji"] = []
         save_state()
-        await event.edit("🧹 ایموجی‌های قطع‌کننده حذف شد.")
+        await event.reply("🧹 ایموجی‌های قطع‌کننده حذف شد.")
         await send_status()
 
-    @client.on(events.NewMessage(pattern=r".ست$"))
+    @client.on(events.NewMessage(pattern=r"^\.ست$"))
     async def show_stop_emoji(event):
         if not is_owner(event): return
         cur_emojis = ", ".join(state["stop_emoji"]) if state["stop_emoji"] else "هیچ"
-        await event.edit(f"⛔ ایموجی‌های فعلی: {cur_emojis}\n"
-                         f"برای تنظیم چندتا باهم: `.ست 😀 💮 ⚡️`")
+        await event.reply(f"⛔ ایموجی‌های فعلی: {cur_emojis}\n"
+                          f"برای تنظیم چندتا باهم: `.ست 😀 💮 ⚡️`")
 
-    @client.on(events.NewMessage(pattern=r".ست (.+)$"))
+    @client.on(events.NewMessage(pattern=r"^\.ست (.+)$"))
     async def set_stop_emoji(event):
         if not is_owner(event): return
         args = event.pattern_match.group(1).strip()
@@ -330,35 +351,27 @@ async def setup_client(session_name):
         state["stop_emoji"] = emojis
         save_state()
         cur_emojis = ", ".join(state["stop_emoji"]) if state["stop_emoji"] else "هیچ"
-        await event.edit(f"✅ ایموجی‌های قطع‌کننده تنظیم شد: {cur_emojis}")
+        await event.reply(f"✅ ایموجی‌های قطع‌کننده تنظیم شد: {cur_emojis}")
         await send_status()
 
+    # ---------- موتور کپی پیام‌ها (copy_groups از دیتابیس) ----------
     @client.on(events.NewMessage)
     async def copy_groups_handler(event):
-        if event.chat_id not in state.get("copy_groups", []):
+        if not state.get("enabled", True):
             return
 
-    # ---------- موتور ثبت کپی
-    def db_get_all_copy_groups():
-        cur.execute("SELECT gid FROM copy_groups;")
-        return [r[0] for r in cur.fetchall()]
-
-    @client.on(events.NewMessage)
-    async def copy_groups_handler(event):
-        if not state["enabled"]:
+        # فقط اگر این چت جزو گروه‌های ثبت کپی باشه (در کل سیستم)
+        copy_groups_all = db_get_copy_groups_for_all()
+        if event.chat_id not in copy_groups_all:
             return
 
-        copy_groups = db_get_all_copy_groups()
-
-        if event.chat_id not in copy_groups:
-            return
-
-        # فقط کاربرهایی که براشون .کپی زدی
+        # فقط پیام‌های کاربرهایی که .کپی براشون فعاله
         if event.sender_id not in state.get("echo_users", []):
             return
 
-        await asyncio.sleep(state["delay"])
-        for gid in copy_groups:
+        await asyncio.sleep(state.get("delay", 2.0))
+
+        for gid in copy_groups_all:
             if gid != event.chat_id:
                 try:
                     if event.media:
@@ -366,8 +379,9 @@ async def setup_client(session_name):
                     else:
                         await client.send_message(gid, event.text)
                 except Exception as e:
-                    print(f"❌ خطا در کپی پیام به {gid}: {e}")
-    # ---------- ماژول‌ها
+                    print(f"❌ [{session_name}] خطا در کپی پیام به {gid}: {e}")
+
+    # ---------- ماژول‌ها ----------
     register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_games(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_menu(client, state, GLOBAL_GROUPS, save_state, send_status)
@@ -376,7 +390,9 @@ async def setup_client(session_name):
     register_help1(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sargarmi(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sell(client)
+    # save_group دیتابیسی با session_name
     register_save_group(client, state, GLOBAL_GROUPS, save_state, send_status, session_name)
+    # extra cmds با conn و session_name مثل نسخه‌ی ۱
     register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, conn, session_name)
 
     return client
@@ -385,10 +401,9 @@ async def setup_client(session_name):
 async def main():
     clients = await asyncio.gather(*[setup_client(s) for s in SESSIONS])
     print(f"🚀 {len(clients)} کلاینت ران شد.")
-    # 👇 به جای run_until_disconnected مستقیم
     await asyncio.gather(*[asyncio.create_task(c.run_until_disconnected()) for c in clients])
 
 
 if __name__ == "__main__":
-    keep_alive()   # روشن نگه داشتن Railway/Replit
-    asyncio.run(main())   # 👈 جایگزین get_event_loop
+    keep_alive()
+    asyncio.run(main())
