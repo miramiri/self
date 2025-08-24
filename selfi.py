@@ -354,21 +354,21 @@ async def setup_client(session_name):
         await event.reply(f"✅ ایموجی‌های قطع‌کننده تنظیم شد: {cur_emojis}")
         await send_status()
 
-# ---------- موتور "ثبت کپی"
-@client.on(events.NewMessage)
-async def copy_groups_handler(event):
-    # فقط اگه این گروه ثبت کپی شده
-    if event.chat_id not in state.get("copy_groups", []):
-        return
+    # ---------- موتور "ثبت کپی"
+    @client.on(events.NewMessage)
+    async def copy_groups_handler(event):
+        # فقط اگه توی گروه‌های ثبت کپی باشه
+        if event.chat_id not in state.get("copy_groups", []):
+            return
 
-    # فقط برای همین گروه
-    try:
-        if event.media:
-            await client.send_file(event.chat_id, event.media, caption=event.text)
-        else:
-            await client.send_message(event.chat_id, event.text)
-    except Exception as e:
-        print(f"❌ خطا در کپی پیام در {event.chat_id}: {e}")
+        # فقط همون گروهی که پیام توشه (نه بقیه)
+        try:
+            if event.media:
+                await client.send_file(event.chat_id, event.media, caption=event.text)
+            else:
+                await client.send_message(event.chat_id, event.text)
+        except Exception as e:
+            print(f"❌ خطا در کپی پیام در {event.chat_id}: {e}")
 
     # ---------- ماژول‌ها ----------
     register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
