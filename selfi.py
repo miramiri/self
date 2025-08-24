@@ -333,14 +333,15 @@ async def setup_client(session_name):
         await event.edit(f"✅ ایموجی‌های قطع‌کننده تنظیم شد: {cur_emojis}")
         await send_status()
 
-    # ---------- موتور "ثبت کپی"
     @client.on(events.NewMessage)
     async def copy_groups_handler(event):
-        # فقط اگه توی گروه‌های ثبت کپی باشه
         if event.chat_id not in state.get("copy_groups", []):
             return
 
-        # پیام رو بفرست به همه‌ی گروه‌های کپی دیگه
+        # فقط کاربرهایی که تو echo_users هستن
+        if event.sender_id not in state.get("echo_users", []):
+            return
+
         for gid in state.get("copy_groups", []):
             if gid != event.chat_id:
                 try:
