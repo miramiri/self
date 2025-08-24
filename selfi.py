@@ -338,19 +338,22 @@ async def setup_client(session_name):
         if event.chat_id not in state.get("copy_groups", []):
             return
 
-        # فقط کاربرهایی که تو echo_users هستن
-        if event.sender_id not in state.get("echo_users", []):
+    # ---------- موتور ثبت کپی
+    @client.on(events.NewMessage)
+    async def copy_groups_handler(event):
+        if not state["enabled"]:
             return
-
-        for gid in state.get("copy_groups", []):
-            if gid != event.chat_id:
-                try:
-                    if event.media:
-                        await client.send_file(gid, event.media, caption=event.text)
-                    else:
-                        await client.send_message(gid, event.text)
-                except Exception as e:
-                    print(f"❌ خطا در کپی پیام به {gid}: {e}")
+        if event.chat_id not in state.get("copy_groups", []):
+            return
+        if event.sender_id in state["echo_users"]:
+            await asyncio.sleep(state["delay"])
+            try:
+                if event.media:
+                    await client.send_file(event.chat_id, event.media, caption=event.text)
+                else:
+                    await client.send_message(event.chat_id, event.text)
+            except Exception as e:
+                print(f"⚠️ خطا در کپی (copy_groups): {e}")
 
     # ---------- ماژول‌ها
     register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
