@@ -238,8 +238,8 @@ async def setup_client(session_name):
     @client.on(events.NewMessage(pattern=r"^\.کپی$"))
     async def enable_copy(event):
         if not is_owner(event): return
-        if not event.is_reply:
-            await event.reply("❌ روی پیام ریپلای کن!")
+        if not event.is_edit:
+            await event.edit("❌ روی پیام ریپلای کن!")
             return
         reply = await event.get_reply_message()
         user = await reply.get_sender()
@@ -248,25 +248,25 @@ async def setup_client(session_name):
             state["last_user"] = user.id
             state["last_group"] = event.chat_id
             save_state()
-            await event.reply(f"✅ کپی برای {getattr(user, 'first_name', 'کاربر')} فعال شد.")
+            await event.edit(f"✅ کپی برای {getattr(user, 'first_name', 'کاربر')} فعال شد.")
         else:
-            await event.reply("ℹ️ قبلاً فعال بود.")
+            await event.edit("ℹ️ قبلاً فعال بود.")
         await send_status()
 
     @client.on(events.NewMessage(pattern=r"^\.کپی خاموش$"))
     async def disable_copy(event):
         if not is_owner(event): return
         if not event.is_reply:
-            await event.reply("❌ روی پیام ریپلای کن!")
+            await event.edit("❌ روی پیام ریپلای کن!")
             return
         reply = await event.get_reply_message()
         user = await reply.get_sender()
         if user.id in state["echo_users"]:
             state["echo_users"].remove(user.id)
             save_state()
-            await event.reply(f"⛔ کپی برای {getattr(user, 'first_name', 'کاربر')} خاموش شد.")
+            await event.edit(f"⛔ کپی برای {getattr(user, 'first_name', 'کاربر')} خاموش شد.")
         else:
-            await event.reply("ℹ️ این کاربر فعال نبود.")
+            await event.edit("ℹ️ این کاربر فعال نبود.")
         await send_status()
 
     # ---------- کپی پلاس
@@ -274,13 +274,13 @@ async def setup_client(session_name):
     async def copy_plus(event):
         if not is_owner(event): return
         if not event.is_reply:
-            await event.reply("❌ روی پیام ریپلای کن!")
+            await event.edit("❌ روی پیام ریپلای کن!")
             return
         reply = await event.get_reply_message()
         user = await reply.get_sender()
         state["copy_plus_user"] = user.id
         save_state()
-        await event.reply(
+        await event.edit(
             f"✨ کپی پلاس فعال شد برای {getattr(user, 'first_name', 'کاربر')}\n"
             f"هر وقت اتوکچ قطع شد، دوباره براش فعال میشه.",
             buttons=[[Button.inline("❌ حذف کپی پلاس", b"del_copy_plus")]]
@@ -325,14 +325,14 @@ async def setup_client(session_name):
         if not is_owner(event): return
         state["stop_emoji"] = []
         save_state()
-        await event.reply("🧹 ایموجی‌های قطع‌کننده حذف شد.")
+        await event.edit("🧹 ایموجی‌های قطع‌کننده حذف شد.")
         await send_status()
 
     @client.on(events.NewMessage(pattern=r"^\.ست$"))
     async def show_stop_emoji(event):
         if not is_owner(event): return
         cur_emojis = ", ".join(state["stop_emoji"]) if state["stop_emoji"] else "هیچ"
-        await event.reply(f"⛔ ایموجی‌های فعلی: {cur_emojis}\n"
+        await event.edit(f"⛔ ایموجی‌های فعلی: {cur_emojis}\n"
                           f"برای تنظیم چندتا باهم: `.ست 😀 💮 ⚡️`")
 
     @client.on(events.NewMessage(pattern=r"^\.ست (.+)$"))
@@ -351,7 +351,7 @@ async def setup_client(session_name):
         state["stop_emoji"] = emojis
         save_state()
         cur_emojis = ", ".join(state["stop_emoji"]) if state["stop_emoji"] else "هیچ"
-        await event.reply(f"✅ ایموجی‌های قطع‌کننده تنظیم شد: {cur_emojis}")
+        await event.edit(f"✅ ایموجی‌های قطع‌کننده تنظیم شد: {cur_emojis}")
         await send_status()
 
     from save_group import db_get_copy_groups  # بالای فایل import بشه
