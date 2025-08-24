@@ -356,34 +356,30 @@ async def setup_client(session_name):
 
     from save_group import db_get_copy_groups  # بالای فایل import بشه
 
-    # ---------- موتور "کپی مداوم در همان گروه"
-    @client.on(events.NewMessage)
-    async def copy_groups_handler(event):
-        if not state.get("enabled", True):
-            return
+# ---------- موتور "کپی مداوم در همان گروه"
+@client.on(events.NewMessage)
+async def copy_groups_handler(event):
+    if not state.get("enabled", True):
+        return
 
-        # 📌 لیست گروه‌های ثبت‌شده از دیتابیس
-        session_name = state.get("session_name")
-        copy_groups = db_get_copy_groups(session_name)
+    # فقط اگر این گروه ثبت کپی شده
+    if event.chat_id not in state.get("copy_groups", []):
+        return
 
-        # فقط اگر این گروه ثبت کپی شده
-        if event.chat_id not in copy_groups:
-            return
+    # فقط برای کاربرهایی که براشون .کپی زدی
+    if event.sender_id not in state.get("echo_users", []):
+        return
 
-        # فقط برای کاربرهایی که براشون .کپی زدی
-        if event.sender_id not in state.get("echo_users", []):
-            return
+    # تاخیر
+    await asyncio.sleep(state.get("delay", 2.0))
 
-        # تاخیر
-        await asyncio.sleep(state.get("delay", 2.0))
-
-        try:
-            if event.media:
-                await client.send_file(event.chat_id, event.media, caption=event.text)
-            else:
-                await client.send_message(event.chat_id, event.text)
-        except Exception as e:
-            print(f"❌ خطا در کپی پیام در {event.chat_id}: {e}")
+    try:
+        if event.media:
+            await client.send_file(event.chat_id, event.media, caption=event.text)
+        else:
+            await client.send_message(event.chat_id, event.text)
+    except Exception as e:
+        print(f"❌ خطا در کپی پیام در {event.chat_id}: {e}")
     # ---------- ماژول‌ها ----------
     register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_games(client, state, GLOBAL_GROUPS, save_state, send_status)
