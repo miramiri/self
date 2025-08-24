@@ -39,7 +39,7 @@ API_HASH = config["api_hash"]
 
 SESSIONS = [
     "acc", "acc1", "acc2", "acc3", "acc4",
-    "acc5", "acc6", "acc7"
+    "acc5", "acc7"
 ]
 
 # فایل مشترک برای گروه‌ها (شناسه‌های تلگرام)
