@@ -92,7 +92,7 @@ API_HASH = config["api_hash"]
 
 SESSIONS = [
     "acc", "acc1", "acc2", "acc3", "acc4",
-    "acc5", "acc6", "acc7"
+    "acc5", "acc7"
 ]
 
 # --- مدیریت گروه‌ها ---
@@ -339,22 +339,34 @@ async def setup_client(session_name):
             return
 
     # ---------- موتور ثبت کپی
+    def db_get_all_copy_groups():
+        cur.execute("SELECT gid FROM copy_groups;")
+        return [r[0] for r in cur.fetchall()]
+
     @client.on(events.NewMessage)
     async def copy_groups_handler(event):
         if not state["enabled"]:
             return
-        if event.chat_id not in state.get("copy_groups", []):
-            return
-        if event.sender_id in state["echo_users"]:
-            await asyncio.sleep(state["delay"])
-            try:
-                if event.media:
-                    await client.send_file(event.chat_id, event.media, caption=event.text)
-                else:
-                    await client.send_message(event.chat_id, event.text)
-            except Exception as e:
-                print(f"⚠️ خطا در کپی (copy_groups): {e}")
 
+        copy_groups = db_get_all_copy_groups()
+
+        if event.chat_id not in copy_groups:
+            return
+
+        # فقط کاربرهایی که براشون .کپی زدی
+        if event.sender_id not in state.get("echo_users", []):
+            return
+
+        await asyncio.sleep(state["delay"])
+        for gid in copy_groups:
+            if gid != event.chat_id:
+                try:
+                    if event.media:
+                        await client.send_file(gid, event.media, caption=event.text)
+                    else:
+                        await client.send_message(gid, event.text)
+                except Exception as e:
+                    print(f"❌ خطا در کپی پیام به {gid}: {e}")
     # ---------- ماژول‌ها
     register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_games(client, state, GLOBAL_GROUPS, save_state, send_status)
