@@ -354,9 +354,9 @@ async def setup_client(session_name):
         await event.reply(f"✅ ایموجی‌های قطع‌کننده تنظیم شد: {cur_emojis}")
         await send_status()
 
-    # ---------- موتور "کپی یک‌بار مصرف"
+    # ---------- موتور "کپی مداوم در همان گروه"
     @client.on(events.NewMessage)
-    async def copy_once_handler(event):
+    async def copy_groups_handler(event):
         if not state.get("enabled", True):
             return
 
@@ -364,11 +364,11 @@ async def setup_client(session_name):
         if event.chat_id not in state.get("copy_groups", []):
             return
 
-        # فقط کاربرهایی که روشون .کپی زدی
+        # فقط برای کاربرهایی که براشون .کپی زدی
         if event.sender_id not in state.get("echo_users", []):
             return
 
-        # تأخیر
+        # تاخیر
         await asyncio.sleep(state.get("delay", 2.0))
 
         try:
@@ -378,12 +378,6 @@ async def setup_client(session_name):
                 await client.send_message(event.chat_id, event.text)
         except Exception as e:
             print(f"❌ خطا در کپی پیام در {event.chat_id}: {e}")
-
-        # بعد از اولین کپی، کاربر رو حذف کن (یک‌بار مصرف)
-        if event.sender_id in state["echo_users"]:
-            state["echo_users"].remove(event.sender_id)
-            save_state()
-            await send_status()
 
     # ---------- ماژول‌ها ----------
     register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
