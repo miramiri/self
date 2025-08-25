@@ -234,24 +234,24 @@ async def setup_client(session_name):
         await event.edit(f"⏳ تاخیر روی {delay} ثانیه تنظیم شد.")
         await send_status()
 
-    # ---------- کپی / کپی خاموش
-    @client.on(events.NewMessage(pattern=r"^\.کپی$"))
-    async def enable_copy(event):
-        if not is_owner(event): return
-        if not event.is_edit:
-            await event.edit("❌ روی پیام ریپلای کن!")
-            return
-        reply = await event.get_reply_message()
-        user = await reply.get_sender()
-        if user.id not in state["echo_users"]:
-            state["echo_users"].append(user.id)
-            state["last_user"] = user.id
-            state["last_group"] = event.chat_id
-            save_state()
-            await event.edit(f"✅ کپی برای {getattr(user, 'first_name', 'کاربر')} فعال شد.")
-        else:
-            await event.edit("ℹ️ قبلاً فعال بود.")
-        await send_status()
+# ---------- کپی / کپی خاموش
+@client.on(events.NewMessage(pattern=r"^\\.کپی$"))
+async def enable_copy(event):
+    if not is_owner(event): return
+    if not event.is_reply:
+        await event.edit("❌ روی پیام ریپلای کن!")
+        return
+    reply = await event.get_reply_message()
+    user = await reply.get_sender()
+    if user.id not in state["echo_users"]:
+        state["echo_users"].append(user.id)
+        state["last_user"] = user.id
+        state["last_group"] = event.chat_id
+        save_state()
+        await event.edit(f"✅ کپی برای {getattr(user, 'first_name', 'کاربر')} فعال شد.")
+    else:
+        await event.edit("ℹ️ قبلاً فعال بود.")
+    await send_status()
 
     @client.on(events.NewMessage(pattern=r"^\.کپی خاموش$"))
     async def disable_copy(event):
