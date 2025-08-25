@@ -21,7 +21,7 @@ def register_text_styles(client, state, save_state):
         txt = "📑 لیست استایل‌های موجود:\n\n"
         txt += "\n".join([f"{i}. {STYLES[i]('نمونه متن')}" for i in STYLES])
         txt += "\n\nبا دستور `.متن <شماره>` استایل رو انتخاب کن."
-        await event.reply(txt, parse_mode="md")
+        await event.edit(txt, parse_mode="md")
 
     # دستور انتخاب استایل
     @client.on(events.NewMessage(pattern=r"^\.متن (\d+)$"))
@@ -29,11 +29,11 @@ def register_text_styles(client, state, save_state):
         if event.sender_id != state["owner_id"]: return
         num = int(event.pattern_match.group(1))
         if num not in STYLES:
-            await event.reply("❌ شماره اشتباهه.")
+            await event.edit("❌ شماره اشتباهه.")
             return
         state["text_style"] = num
         save_state()
-        await event.reply(f"✅ استایل شماره {num} فعال شد.")
+        await event.edit(f"✅ استایل شماره {num} فعال شد.")
 
     # هندل پیام‌ها برای اعمال استایل روی متن فقط
     @client.on(events.NewMessage)
