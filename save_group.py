@@ -47,7 +47,7 @@ def register_save_group(client, state, groups, save_state, send_status, session_
     def is_owner(e):
         return e.sender_id == state.get("owner_id")
 
-    # --- ثبت برای این اکانت (با آیدی یا بدون) ---
+    # --- ثبت گروه برای اتوکچ ---
     @client.on(events.NewMessage(pattern=r"^\.سبت(?: (.+))?$"))
     async def register_group(event):
         if not is_owner(event): return
@@ -66,40 +66,33 @@ def register_save_group(client, state, groups, save_state, send_status, session_
             gid = event.chat_id
 
         db_add_auto_group(session_name, gid)
-
-        # sync
         state["auto_groups"] = db_get_auto_groups(session_name)
         save_state()
-
         await event.edit("گروه در حالت سکوت قرار گرفت 😴.")
 
-# --- ثبت کپی فقط برای همین اکانت ---
-@client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?: (.+))?$"))
-async def register_copy_group(event):
-    if not is_owner(event): return
+    # --- ثبت گروه برای کپی ---
+    @client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?: (.+))?$"))
+    async def register_copy_group(event):
+        if not is_owner(event): return
 
-    arg = event.pattern_match.group(1)
-    if arg:
-        try:
-            gid = int(arg)
-        except ValueError:
-            await event.edit("❌ آیدی درست وارد کن.")
-            return
-    else:
-        if not event.is_group:
-            await event.edit("❌ فقط داخل گروه می‌تونی بزنی.")
-            return
-        gid = event.chat_id
+        arg = event.pattern_match.group(1)
+        if arg:
+            try:
+                gid = int(arg)
+            except ValueError:
+                await event.edit("❌ آیدی درست وارد کن.")
+                return
+        else:
+            if not event.is_group:
+                await event.edit("❌ فقط داخل گروه می‌تونی بزنی.")
+                return
+            gid = event.chat_id
 
-    # اضافه به دیتابیس (فقط همین سشن)
-    db_add_copy_group(session_name, gid)
-
-    # sync
-    state["copy_groups"] = db_get_copy_groups(session_name)
-    save_state()
-
-    await event.edit("✅ گروه به لیست کپی اضافه شد.")
-    await send_status()
+        db_add_copy_group(session_name, gid)
+        state["copy_groups"] = db_get_copy_groups(session_name)
+        save_state()
+        await event.edit("✅ گروه به لیست کپی اضافه شد.")
+        await send_status()
 
     # --- حذف گروه ---
     @client.on(events.NewMessage(pattern=r"^\.حذف(?: (.+))?$"))
@@ -119,12 +112,10 @@ async def register_copy_group(event):
                 return
             gid = event.chat_id
 
-        # حذف از دیتابیس
         db_remove_group(session_name, gid)
-
         state["auto_groups"] = db_get_auto_groups(session_name)
         state["copy_groups"] = db_get_copy_groups(session_name)
         save_state()
-
         await event.edit("گروه از حالت سکوت در اومد 🦦.")
         await send_status()
+
