@@ -73,52 +73,33 @@ def register_save_group(client, state, groups, save_state, send_status, session_
 
         await event.edit("گروه در حالت سکوت قرار گرفت 😴.")
 
-    # --- ثبت کپی برای همه اکانت‌ها ---
-    @client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?: (.+))?$"))
-    async def register_copy_group(event):
-        if not is_owner(event): return
+# --- ثبت کپی فقط برای همین اکانت ---
+@client.on(events.NewMessage(pattern=r"^\.ثبت کپی(?: (.+))?$"))
+async def register_copy_group(event):
+    if not is_owner(event): return
 
-        arg = event.pattern_match.group(1)
-        if arg:
-            try:
-                gid = int(arg)
-            except ValueError:
-                await event.edit("خو جقی آیدی درست بزن 🤦🏻‍♂️.")
-                return
-        else:
-            if not event.is_group:
-                await event.edit("خو جقی برو تو گروه بزن🤦🏻‍♂️.")
-                return
-            gid = event.chat_id
-
-        # همه session_name ها رو از دیتابیس بگیر
-        with conn.cursor() as c:
-            c.execute("""
-                SELECT DISTINCT session_name FROM auto_groups
-                UNION
-                SELECT DISTINCT session_name FROM copy_groups;
-            """)
-            all_sessions = [r[0] for r in c.fetchall()]
-
-        # اول چک کن آیا از قبل وجود داشته؟
-        with conn.cursor() as c:
-            c.execute("SELECT 1 FROM copy_groups WHERE gid=%s LIMIT 1;", (gid,))
-            exists = c.fetchone()
-
-        if exists:
-            await event.edit("خو ی بار دست کردی تو شورت معلم بسه دیگه 🤦🏻‍♂️.")
+    arg = event.pattern_match.group(1)
+    if arg:
+        try:
+            gid = int(arg)
+        except ValueError:
+            await event.edit("❌ آیدی درست وارد کن.")
             return
+    else:
+        if not event.is_group:
+            await event.edit("❌ فقط داخل گروه می‌تونی بزنی.")
+            return
+        gid = event.chat_id
 
-        # اگه نبود، برای همه سشن‌ها ثبت کن
-        for s_name in all_sessions:
-            db_add_copy_group(s_name, gid)
+    # اضافه به دیتابیس (فقط همین سشن)
+    db_add_copy_group(session_name, gid)
 
-        # sync برای همین سشن
-        state["copy_groups"] = db_get_copy_groups(session_name)
-        save_state()
+    # sync
+    state["copy_groups"] = db_get_copy_groups(session_name)
+    save_state()
 
-        await event.edit("کی دست کرد تو شورت معلم❤️‍🔥🦦")
-        await send_status()
+    await event.edit("✅ گروه به لیست کپی اضافه شد.")
+    await send_status()
 
     # --- حذف گروه ---
     @client.on(events.NewMessage(pattern=r"^\.حذف(?: (.+))?$"))
