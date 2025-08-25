@@ -19,6 +19,7 @@ from help1 import register_help1
 from sargarmi import register_sargarmi
 from sell import register_sell
 from save_group import register_save_group   # ← وصله‌ی دیتابیسی ثبت/حذف گروه
+from selfi3 import register_selfi3_cmds
 
 # --- اتصال به دیتابیس PostgreSQL ---
 DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL")
@@ -205,152 +206,6 @@ async def setup_client(session_name):
             f"      • .تاریخ\n"
         )
 
-    # ---------- کپی / کپی خاموش
-    @client.on(events.NewMessage(pattern=r".کپی$"))
-    async def enable_copy(event):
-        if not is_owner(event): return
-        if not event.is_reply:
-            await event.edit("❌ روی پیام ریپلای کن!")
-            return
-        reply = await event.get_reply_message()
-        user = await reply.get_sender()
-        if user.id not in state["echo_users"]:
-            state["echo_users"].append(user.id)
-            state["last_user"] = user.id
-            state["last_group"] = event.chat_id
-            save_state()
-            await event.edit(f"✅ کپی برای {user.first_name} فعال شد.")
-        else:
-            await event.edit("ℹ️ قبلاً فعال بود.")
-        await send_status()
-
-    @client.on(events.NewMessage(pattern=r".کپی خاموش$"))
-    async def disable_copy(event):
-        if not is_owner(event): return
-        if not event.is_reply:
-            await event.edit("❌ روی پیام ریپلای کن!")
-            return
-        reply = await event.get_reply_message()
-        user = await reply.get_sender()
-        if user.id in state["echo_users"]:
-            state["echo_users"].remove(user.id)
-            save_state()
-            await event.edit(f"⛔ کپی برای {user.first_name} خاموش شد.")
-        else:
-            await event.edit("ℹ️ این کاربر فعال نبود.")
-        await send_status()
-
-    # ---------- کپی پلاس
-    @client.on(events.NewMessage(pattern=r"^\.کپی پلاس$"))
-    async def copy_plus(event):
-        if not is_owner(event): return
-        if not event.is_reply:
-            await event.edit("❌ روی پیام ریپلای کن!")
-            return
-        reply = await event.get_reply_message()
-        user = await reply.get_sender()
-        state["copy_plus_user"] = user.id
-        save_state()
-        await event.edit(
-            f"✨ کپی پلاس فعال شد برای {getattr(user, 'first_name', 'کاربر')}\n"
-            f"هر وقت اتوکچ قطع شد، دوباره براش فعال میشه.",
-            buttons=[[Button.inline("❌ حذف کپی پلاس", b"del_copy_plus")]]
-        )
-        await send_status()
-
-    @client.on(events.CallbackQuery(pattern=b"del_copy_plus"))
-    async def del_copy_plus(event):
-        if not is_owner(event): return
-        state["copy_plus_user"] = None
-        save_state()
-        await event.edit("❌ کپی پلاس حذف شد.")
-        await send_status()
-
-    # ---------- ریست دیتا
-    @client.on(events.NewMessage(pattern=r"^\.ریست دیتا$"))
-    async def reset_data(event):
-        if not is_owner(event): return
-        status_msg_id_keep = state.get("status_msg_id")
-        state.clear()
-        state.update({
-            "owner_id": event.sender_id,
-            "echo_users": [],
-            "enabled": True,
-            "delay": 2.0,
-            "stop_emoji": ["⚜", "💮", "⚡", "❓"],
-            "last_user": None,
-            "last_group": None,
-            "funny_text": "مگه نیما فشاری 😂",
-            "status_msg_id": status_msg_id_keep,
-            "auto_groups": db_get_auto_groups(session_name),
-            "copy_plus_user": None,
-            "copy_groups": db_get_copy_groups_for_session(session_name)
-        })
-        save_state()
-        await event.reply("♻️ فایل دیتا ریست شد.")
-        await send_status()
-
-    # ---------- دستور .ست
-    @client.on(events.NewMessage(pattern=r"^\.ست حذف همه$"))
-    async def clear_stop_emoji(event):
-        if not is_owner(event): return
-        state["stop_emoji"] = []
-        save_state()
-        await event.edit("🧹 ایموجی‌های قطع‌کننده حذف شد.")
-        await send_status()
-
-    @client.on(events.NewMessage(pattern=r"^\.ست$"))
-    async def show_stop_emoji(event):
-        if not is_owner(event): return
-        cur_emojis = ", ".join(state["stop_emoji"]) if state["stop_emoji"] else "هیچ"
-        await event.edit(f"⛔ ایموجی‌های فعلی: {cur_emojis}\n"
-                          f"برای تنظیم چندتا باهم: `.ست 😀 💮 ⚡️`")
-
-    @client.on(events.NewMessage(pattern=r"^\.ست (.+)$"))
-    async def set_stop_emoji(event):
-        if not is_owner(event): return
-        args = event.pattern_match.group(1).strip()
-        tokens = [tok for tok in args.split() if tok]
-        seen = set()
-        emojis = []
-        for t in tokens:
-            if t not in seen:
-                seen.add(t)
-                emojis.append(t)
-        if len(emojis) > 10:
-            emojis = emojis[:10]
-        state["stop_emoji"] = emojis
-        save_state()
-        cur_emojis = ", ".join(state["stop_emoji"]) if state["stop_emoji"] else "هیچ"
-        await event.edit(f"✅ ایموجی‌های قطع‌کننده تنظیم شد: {cur_emojis}")
-        await send_status()
-
-    from save_group import db_get_copy_groups  # بالای فایل import بشه
-
-    # ---------- موتور "کپی مداوم در همان گروه"
-    @client.on(events.NewMessage)
-    async def copy_groups_handler(event):
-        if not state.get("enabled", True):
-            return
-
-        # فقط اگر این گروه ثبت کپی شده
-        if event.chat_id not in state.get("copy_groups", []):
-            return
-
-        # فقط برای کاربرهایی که براشون .کپی زدی
-        if event.sender_id not in state.get("echo_users", []):
-            return
-
-        # تاخیر
-        await asyncio.sleep(state.get("delay", 2.0))
-
-        try:
-            if event.media:
-                await client.send_file(event.chat_id, event.media, caption=event.text)
-            else:
-                await client.send_message(event.chat_id, event.text)
-        except Exception as e:
-            print(f"❌ خطا در کپی پیام در {event.chat_id}: {e}")
     # ---------- ماژول‌ها ----------
     register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_games(client, state, GLOBAL_GROUPS, save_state, send_status)
@@ -360,10 +215,9 @@ async def setup_client(session_name):
     register_help1(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sargarmi(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_sell(client)
-    # save_group دیتابیسی با session_name
     register_save_group(client, state, GLOBAL_GROUPS, save_state, send_status, session_name)
-    # extra cmds با conn و session_name مثل نسخه‌ی ۱
     register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, conn, session_name)
+    register_selfi3_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, session_name)
 
     return client
 
