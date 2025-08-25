@@ -3,7 +3,7 @@ from telethon import events, Button
 import asyncio
 
 def register_selfi3_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, session_name):
-    # ---------- کپی / کپی خاموش ----------
+    # ---------- کپی ----------
     @client.on(events.NewMessage(pattern=r".کپی$"))
     async def enable_copy(event):
         if event.sender_id != state["owner_id"]: return
@@ -22,6 +22,7 @@ def register_selfi3_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, 
             await event.edit("ℹ️ قبلاً فعال بود.")
         await send_status()
 
+    # ---------- کپی خاموش ----------
     @client.on(events.NewMessage(pattern=r".کپی خاموش$"))
     async def disable_copy(event):
         if event.sender_id != state["owner_id"]: return
@@ -136,7 +137,7 @@ def register_selfi3_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, 
         save_state()
 
         if delay == 0:
-            await event.edit("⏱️ تاخیر روی 0 تنظیم شد.")
+            await event.edit("⏱️ تاخیر روی 0 (درجا) تنظیم شد.")
         else:
             await event.edit(f"⏱️ تاخیر روی {delay} ثانیه تنظیم شد.")
         await send_status()
@@ -158,13 +159,3 @@ def register_selfi3_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, 
                 await client.send_message(event.chat_id, event.text)
         except Exception as e:
             print(f"❌ خطا در کپی پیام در {event.chat_id}: {e}")
-
-return
-await asyncio.sleep(state.get("delay", 2.0))
-try:
-if event.media:
-await client.send_file(event.chat_id, event.media, caption=event.text)
-else:
-await client.send_message(event.chat_id, event.text)
-except Exception as e:
-print(f"❌ خطا در کپی پیام در {event.chat_id}: {e}")
