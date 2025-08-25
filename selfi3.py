@@ -122,6 +122,25 @@ def register_selfi3_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, 
         await event.edit(f"✅ ایموجی‌های قطع‌کننده تنظیم شد: {cur_emojis}")
         await send_status()
 
+    # ---------- دستور تاخیر ----------
+    @client.on(events.NewMessage(pattern=r"^\.(\d+(?:\.\d+)?)$"))
+    async def set_delay(event):
+        if event.sender_id != state["owner_id"]: return
+        try:
+            delay = float(event.pattern_match.group(1))
+        except ValueError:
+            await event.edit("❌ عدد درست وارد کن.")
+            return
+
+        state["delay"] = max(0.0, delay)
+        save_state()
+
+        if delay == 0:
+            await event.edit("⏱️ تاخیر روی 0 تنظیم شد.")
+        else:
+            await event.edit(f"⏱️ تاخیر روی {delay} ثانیه تنظیم شد.")
+        await send_status()
+
     # ---------- موتور کپی گروه ----------
     @client.on(events.NewMessage)
     async def copy_groups_handler(event):
@@ -139,3 +158,13 @@ def register_selfi3_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, 
                 await client.send_message(event.chat_id, event.text)
         except Exception as e:
             print(f"❌ خطا در کپی پیام در {event.chat_id}: {e}")
+
+return
+await asyncio.sleep(state.get("delay", 2.0))
+try:
+if event.media:
+await client.send_file(event.chat_id, event.media, caption=event.text)
+else:
+await client.send_message(event.chat_id, event.text)
+except Exception as e:
+print(f"❌ خطا در کپی پیام در {event.chat_id}: {e}")
