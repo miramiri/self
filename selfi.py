@@ -20,6 +20,7 @@ from sargarmi import register_sargarmi
 from sell import register_sell
 from save_group import register_save_group   # ← وصله‌ی دیتابیسی ثبت/حذف گروه
 from selfi3 import register_selfi3_cmds
+from selfi4 import register_text_styles
 
 # --- اتصال به دیتابیس PostgreSQL ---
 DATABASE_URL = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL")
@@ -233,6 +234,7 @@ async def setup_client(session_name):
     register_save_group(client, state, GLOBAL_GROUPS, save_state, send_status, session_name)
     register_extra_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, conn, session_name)
     register_selfi3_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, session_name)
+    register_text_styles(client, state, save_state)
 
     return client
 
