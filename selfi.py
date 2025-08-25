@@ -172,7 +172,7 @@ async def setup_client(session_name):
     def is_owner(e):
         return e.sender_id == state["owner_id"]
 
-    # ---------- متن منو وضعیت
+    # ---------- متن وضعیت
     def _status_text():
         return (
             f"🤖 وضعیت ربات {session_name}\n"
@@ -206,6 +206,21 @@ async def setup_client(session_name):
             f"      • .تاریخ\n"
         )
 
+    # ---------- تابع ارسال وضعیت ----------
+    async def send_status():
+        try:
+            text = _status_text()
+            if state.get("status_msg_id") and state.get("last_group"):
+                # ویرایش پیام قبلی
+                await client.edit_message(state["last_group"], state["status_msg_id"], text)
+            elif state.get("last_group"):
+                # ارسال پیام جدید
+                msg = await client.send_message(state["last_group"], text)
+                state["status_msg_id"] = msg.id
+                save_state()
+        except Exception as e:
+            print(f"⚠️ [{session_name}] خطا در send_status: {e}")
+
     # ---------- ماژول‌ها ----------
     register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status)
     register_games(client, state, GLOBAL_GROUPS, save_state, send_status)
@@ -220,7 +235,6 @@ async def setup_client(session_name):
     register_selfi3_cmds(client, state, GLOBAL_GROUPS, save_state, send_status, session_name)
 
     return client
-
 
 async def main():
     clients = await asyncio.gather(*[setup_client(s) for s in SESSIONS])
