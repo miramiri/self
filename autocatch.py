@@ -21,6 +21,8 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
         state["catch_delay"] = 1.0
     if "pending_catches" not in state:
         state["pending_catches"] = []
+    if "echo_active" not in state:
+        state["echo_active"] = True   # کنترل فعال/غیرفعال بودن اکو
 
     # --- تغییر سرعت کچ با '.کچ 1.5' و ...
     @client.on(events.NewMessage(pattern=r"\.کچ (\d+(?:\.\d+)?)$"))
@@ -57,7 +59,8 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                     "users": list(state.get("echo_users", [])),
                     "time": _now_ts()
                 })
-                state["echo_users"] = []
+                state["echo_users"].clear()   # خالی کردن لیست اکو
+                state["echo_active"] = True   # مطمئن باش فعلاً اکتیو بود
                 save_state()
                 await send_status()
 
@@ -112,6 +115,26 @@ def register_autocatch(client, state, GLOBAL_GROUPS, save_state, send_status):
                     state["echo_users"].append(target)
                     acted = True
 
+            # 🚨 مهم: بعد از برگشت یوزرا → اولین پیام رو رد کن
+            state["echo_active"] = False
+
         save_state()
         if acted:
             await send_status()
+
+    # --- هندلر اکو (نمونه، باید جایی که پیام کاربرا رو کپی می‌کنی بذاری)
+    @client.on(events.NewMessage)
+    async def echo_handler(event):
+        # فقط پیام‌های گروه‌هایی که توی لیست هستن
+        gid = event.chat_id
+        session_name = state.get("session_name")
+        all_groups = db_get_auto_groups(session_name) + db_get_copy_groups(session_name) + GLOBAL_GROUPS
+        if gid not in all_groups:
+            return
+
+        # 🚨 اولین پیام بعد از برگشت → رد کن و فعال کن
+        if not state.get("echo_active", True):
+            state["echo_active"] = True
+            return
+
+        # اینجا منطق کپی پیام رو بذار (همون قبلی که داشتی)
