@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+import pytz
 from telethon import events
 from telethon.tl.functions.account import UpdateProfileRequest
 
@@ -64,10 +65,11 @@ def register_clock(client, state, save_state):
         state["clock_on"] = False
 
     async def update_clock():
+        tehran = pytz.timezone("Asia/Tehran")
         while True:
             try:
                 if state.get("clock_on", False):
-                    now = datetime.now().strftime("%H:%M")
+                    now = datetime.now(tehran).strftime("%H:%M")
                     font_fn = FONTS.get(state["clock_font"], FONTS[1])
                     styled_time = font_fn(now)
                     await client(UpdateProfileRequest(last_name=f"⏰ {styled_time}"))
@@ -81,7 +83,8 @@ def register_clock(client, state, save_state):
     # --- لیست فونت‌ها
     @client.on(events.NewMessage(pattern=r"^\.لیست ساعت$"))
     async def list_fonts(event):
-        sample = datetime.now().strftime("%H:%M")
+        tehran = pytz.timezone("Asia/Tehran")
+        sample = datetime.now(tehran).strftime("%H:%M")
         msg = "📑 لیست فونت‌های ساعت:\n\n"
         for i, fn in FONTS.items():
             msg += f"{i}. {fn(sample)}\n"
