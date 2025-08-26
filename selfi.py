@@ -92,7 +92,7 @@ API_ID = int(config["api_id"])
 API_HASH = config["api_hash"]
 
 SESSIONS = [
-    "acc", "acc1", "acc2", "acc3", "acc4", "acc7"
+    "acc", "acc1", "acc2", "acc3", "acc4""
 ]
 
 # --- گروه‌های عمومی (جدول groups) ---
